@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoralGuard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --page-bg: #eef0f3;
+    --app-bg: #f7f8fa;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+    --text: #1c1c1e;
+    --text-dim: #8e8e93;
+    --text-faint: #c7c7cc;
+    --mint-deep: #0d9488;
+    --mint: #34d399;
+    --mint-pale: #d1fae5;
+    --amber: #f59e0b;
+    --amber-pale: #fef3c7;
+    --red: #ef4444;
+    --red-pale: #fee2e2;
+    --blue: #3b82f6;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    background: var(--page-bg);
+    font-family: -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+  }
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px 0;
+  }
+
+  /* ---------------- phone frame ---------------- */
+  .phone {
+    position: relative;
+    width: 393px;
+    height: 852px;
+    background: #000;
+    border-radius: 62px;
+    padding: 14px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15);
+    flex: 0 0 auto;
+  }
+  .phone-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: var(--app-bg);
+    border-radius: 48px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .dynamic-island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 34px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 50;
+  }
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px 4px;
+    font-weight: 600;
+    font-size: 15px;
+    flex: 0 0 auto;
+  }
+  .status-bar .icons { display: flex; gap: 5px; align-items: center; }
+
+  .app-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 90px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-scroll::-webkit-scrollbar { display: none; }
+
+  .app-header {
+    padding: 8px 20px 4px;
+  }
+  .app-header h1 {
+    font-size: 30px;
+    font-weight: 800;
+    color: #ef4444;
+    margin: 0 0 2px;
+    letter-spacing: -0.5px;
+  }
+  .app-header .greeting { color: var(--text-dim); font-size: 15px; margin: 0; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-actions { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .live-pill {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700; color: var(--red);
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
+  .bell-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #fff; box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  /* ---------------- shared components ---------------- */
+  .card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin: 10px 20px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 10px; font-weight: 700; }
+  .card h3 { font-size: 12px; color: var(--text-dim); margin: 0 0 6px; font-weight: 600; }
+
+  .status-hero {
+    background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+    border-radius: 22px;
+    margin: 10px 20px 4px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .status-hero.grade-Fair { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
+  .status-hero.grade-Poor { background: linear-gradient(135deg, #fef2f2, #fee2e2); }
+  .mascot {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #6ee7b7, var(--mint));
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    flex: 0 0 auto;
+    box-shadow: 0 8px 20px rgba(52,211,153,0.35);
+  }
+  .status-hero.grade-Fair .mascot { background: radial-gradient(circle at 35% 30%, #fde68a, var(--amber)); box-shadow: 0 8px 20px rgba(245,158,11,0.35); }
+  .status-hero.grade-Poor .mascot { background: radial-gradient(circle at 35% 30%, #fca5a5, var(--red)); box-shadow: 0 8px 20px rgba(239,68,68,0.35); }
+  .mascot .face { font-size: 40px; }
+  .status-copy { flex: 1 1 auto; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700; color: var(--mint-deep);
+    background: rgba(13,148,136,0.1);
+    padding: 3px 10px; border-radius: 999px;
+    margin-bottom: 6px;
+  }
+  .status-hero.grade-Fair .status-badge { color: #b45309; background: rgba(245,158,11,0.15); }
+  .status-hero.grade-Poor .status-badge { color: #b91c1c; background: rgba(239,68,68,0.15); }
+  .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-copy .headline { font-size: 17px; font-weight: 700; line-height: 1.35; margin: 0 0 6px; }
+  .status-copy .link { font-size: 13px; color: var(--text-dim); }
+
+  .metric-row { display: flex; gap: 10px; margin: 14px 20px 4px; }
+  .metric-card {
+    flex: 1 1 0;
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 12px 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .1s ease;
+  }
+  .metric-card.active { border-color: var(--blue); }
+  .metric-card:active { transform: scale(0.97); }
+  .metric-card .m-label { font-size: 11px; font-weight: 700; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center; }
+  .metric-card .m-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .metric-card .m-value { font-size: 20px; font-weight: 800; margin-top: 6px; }
+  .metric-card .m-unit { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+
+  .detail-card { margin: 14px 20px 10px; }
+  .detail-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .detail-head .d-title { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+  .detail-head .d-more { font-size: 13px; color: var(--blue); font-weight: 700; }
+  .detail-value { font-size: 26px; font-weight: 800; margin: 2px 0 8px; display: flex; align-items: baseline; gap: 8px; }
+  .detail-value .chip {
+    font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    background: var(--mint-pale); color: var(--mint-deep);
+  }
+
+  .zone-legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+  .zone-legend-row .bar { flex: 1; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--red), var(--amber), var(--mint)); }
+
+  .stat-pair { display: flex; gap: 10px; margin: 4px 20px 16px; }
+  .stat-pill {
+    flex: 1 1 0;
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stat-pill .icon-badge {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    background: #eff6ff;
+  }
+  .stat-pill .icon-badge.mint { background: var(--mint-pale); }
+  .stat-pill .s-label { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+  .stat-pill .s-value { font-size: 15px; font-weight: 800; }
+
+  /* ---------------- bottom nav ---------------- */
+  .bottom-nav {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 88px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: 20px;
+    z-index: 40;
+  }
+  .nav-btn {
+    flex: 1 1 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    color: var(--text-faint);
+    font-size: 10px;
+    font-weight: 600;
+    background: none; border: none;
+    cursor: pointer;
+  }
+  .nav-btn .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-btn.active { color: var(--blue); }
+
+  .app-tab { display: none; animation: fadeIn .2s ease; }
+  .app-tab.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+
+  .tab-title { padding: 8px 20px 2px; }
+  .tab-title h1 { font-size: 28px; font-weight: 800; margin: 0 0 2px; }
+  .tab-title p { color: var(--text-dim); font-size: 14px; margin: 0; }
+
+  #error-banner {
+    display: none; margin: 12px 20px; padding: 12px 14px; border-radius: 12px;
+    background: var(--red-pale); color: #b91c1c; font-size: 12px;
+  }
+
+  /* ---------------- trends tab ---------------- */
+  .seg-group { display: flex; gap: 8px; }
+  .seg-btn {
+    flex: 1 1 0;
+    padding: 8px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--app-bg);
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .seg-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  .stat-grid-3 { display: flex; gap: 8px; margin-top: 14px; }
+  .mini-stat {
+    flex: 1 1 0;
+    background: var(--app-bg);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .mini-label { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-bottom: 4px; }
+  .mini-value { font-size: 16px; font-weight: 800; }
+
+  .warn-banner {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--red-pale);
+    color: #b91c1c;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  /* ---------------- calendar tab ---------------- */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-nav-btn {
+    width: 32px; height: 32px; border-radius: 50%; border: none;
+    background: var(--app-bg); color: var(--text); font-size: 18px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .cal-title { font-size: 15px; font-weight: 800; }
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    font-size: 11px; color: var(--text-dim); font-weight: 700; text-align: center;
+    margin-bottom: 4px;
+  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; border-radius: 10px; cursor: pointer; position: relative;
+  }
+  .cal-cell.empty { cursor: default; }
+  .cal-cell.no-data { cursor: default; opacity: 0.35; }
+  .cal-daynum { font-size: 12px; font-weight: 600; }
+  .cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .cal-cell.is-today .cal-daynum { color: var(--blue); font-weight: 800; }
+  .cal-cell.is-today { box-shadow: inset 0 0 0 1.5px var(--blue); }
+  .cal-cell.is-selected { background: var(--app-bg); }
+  .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 10px; color: var(--text-dim); }
+  .cal-legend span { display: flex; align-items: center; gap: 4px; }
+  .cal-metric-grid { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* ---------------- comparison tab ---------------- */
+  .legend-row { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+  .percentile-readout {
+    margin-top: 10px; font-size: 13px; line-height: 1.5; text-align: center;
+    background: var(--app-bg); border-radius: 12px; padding: 10px;
+  }
+  .scenario-block { margin-bottom: 20px; }
+  .scenario-block:last-child { margin-bottom: 0; }
+  .scenario-delta {
+    text-align: center; font-size: 18px; font-weight: 800; margin-top: 6px;
+  }
+  .scenario-delta.pos { color: var(--mint-deep); }
+  .scenario-delta.neg { color: var(--red); }
+  .motivate-card {
+    margin-top: 16px; padding: 14px; border-radius: 14px; text-align: center;
+    background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+    font-size: 14px; font-weight: 700; color: var(--text);
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="phone-screen">
+    <div class="dynamic-island"></div>
+    <div class="status-bar">
+      <span>9:41</span>
+      <span class="icons">📶 📡 🔋</span>
+    </div>
+
+    <div id="error-banner"></div>
+
+    <div class="app-scroll" id="app-scroll">
+
+      <!-- ============ TAB: HOME ============ -->
+      <section class="app-tab active" id="tab-home">
+        <div class="app-header">
+          <div class="header-row">
+            <div>
+              <h1>MoralGuard</h1>
+              <p class="greeting" id="home-greeting">안녕하세요, 민재님</p>
+            </div>
+            <div class="header-actions">
+              <span class="live-pill"><span class="live-dot"></span>LIVE</span>
+              <div class="bell-btn">🔔</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-hero" id="status-hero">
+          <div class="mascot"><span class="face">🙂</span></div>
+          <div class="status-copy">
+            <div class="status-badge" id="status-badge"><span class="dot"></span><span id="status-badge-text">정상</span></div>
+            <p class="headline" id="status-headline">구강 건강 지수가 안정적이며 건강한 상태입니다.</p>
+            <span class="link">› 자세한 보고서 보기</span>
+          </div>
+        </div>
+
+        <div class="metric-row" id="metric-row">
+          <div class="metric-card active" data-metric="pressure">
+            <div class="m-label"><span>양치 압력</span><span class="m-dot" id="dot-pressure"></span></div>
+            <div class="m-value" id="mc-pressure">--<span class="m-unit"> N</span></div>
+          </div>
+          <div class="metric-card" data-metric="ph">
+            <div class="m-label"><span>구강 pH</span><span class="m-dot" id="dot-ph"></span></div>
+            <div class="m-value" id="mc-ph">--<span class="m-unit"> pH</span></div>
+          </div>
+          <div class="metric-card" data-metric="coverage">
+            <div class="m-label"><span>커버리지</span><span class="m-dot" id="dot-coverage"></span></div>
+            <div class="m-value" id="mc-coverage">--<span class="m-unit"> %</span></div>
+          </div>
+        </div>
+
+        <div class="detail-card card">
+          <div class="detail-head">
+            <span class="d-title" id="detail-title">최근 세션 · 압력 변화</span>
+            <span class="d-more">상세 ›</span>
+          </div>
+          <div class="detail-value"><span id="detail-value">--</span><span class="chip" id="detail-chip">정상</span></div>
+          <canvas id="home-detail-chart" height="160"></canvas>
+          <svg id="home-zone-svg" viewBox="0 0 350 175" style="width:100%; height:auto; display:none;"></svg>
+          <div class="zone-legend-row" id="home-zone-legend" style="display:none;">
+            <span>0%</span><div class="bar"></div><span>100%</span>
+          </div>
+          <div id="detail-extra"></div>
+        </div>
+
+        <div class="stat-pair">
+          <div class="stat-pill">
+            <div class="icon-badge">🪥</div>
+            <div><div class="s-label">오늘 세션</div><div class="s-value" id="stat-sessions">-</div></div>
+          </div>
+          <div class="stat-pill">
+            <div class="icon-badge mint">🛡️</div>
+            <div><div class="s-label">모니터링</div><div class="s-value" id="stat-monitoring">-</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ TAB: TRENDS ============ -->
+      <section class="app-tab" id="tab-trends">
+        <div class="tab-title"><h1>Trends</h1><p>상세 보고서</p></div>
+        <div id="trends-content"></div>
+      </section>
+
+      <!-- ============ TAB: CALENDAR ============ -->
+      <section class="app-tab" id="tab-calendar">
+        <div class="tab-title"><h1>Calendar</h1><p>월간 구강 건강 트래킹</p></div>
+        <div id="calendar-content"></div>
+      </section>
+
+      <!-- ============ TAB: COMPARISON ============ -->
+      <section class="app-tab" id="tab-comparison">
+        <div class="tab-title"><h1>Comparison</h1><p>종합 비교 및 시뮬레이션</p></div>
+        <div id="comparison-content"></div>
+      </section>
+
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-btn active" data-tab="home"><span class="nav-icon">🏠</span>Home</button>
+      <button class="nav-btn" data-tab="trends"><span class="nav-icon">📈</span>Trends</button>
+      <button class="nav-btn" data-tab="calendar"><span class="nav-icon">📅</span>Calendar</button>
+      <button class="nav-btn" data-tab="comparison"><span class="nav-icon">⚖️</span>Comparison</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = {
+  mintDeep: '#0d9488', mint: '#34d399', mintPale: '#d1fae5',
+  amber: '#f59e0b', amberPale: '#fef3c7',
+  red: '#ef4444', redPale: '#fee2e2',
+  blue: '#3b82f6', text: '#1c1c1e', textDim: '#8e8e93', border: '#e5e7eb',
+};
+Chart.defaults.color = COLORS.textDim;
+Chart.defaults.borderColor = COLORS.border;
+Chart.defaults.font.family = '-apple-system, system-ui, sans-serif';
+
+function gradeColor(grade) {
+  return { Excellent: COLORS.mintDeep, Good: COLORS.mint, Fair: COLORS.amber, Poor: COLORS.red }[grade] || COLORS.textDim;
+}
+function gradeLabel(grade) {
+  return { Excellent: '매우 좋음', Good: '정상', Fair: '주의', Poor: '위험' }[grade] || grade;
+}
+
+// ---------------------------------------------------------------- nav
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.app-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    document.getElementById('app-scroll').scrollTop = 0;
+  });
+});
+
+// ---------------------------------------------------------------- data load
+let DATA = null;
+let COHORT = null;
+
+async function loadData() {
+  try {
+    const [patientRes, cohortRes] = await Promise.all([
+      fetch('data/patient_data.json'),
+      fetch('../data/cohort_results.json'),
+    ]);
+    if (!patientRes.ok) throw new Error('patient_data HTTP ' + patientRes.status);
+    if (!cohortRes.ok) throw new Error('cohort_results HTTP ' + cohortRes.status);
+    DATA = await patientRes.json();
+    COHORT = await cohortRes.json();
+    renderAll();
+  } catch (err) {
+    const banner = document.getElementById('error-banner');
+    banner.style.display = 'block';
+    banner.textContent = '데이터를 불러오지 못했습니다 (' + err.message + '). 저장소 루트에서 ' +
+      '`python3 -m http.server 8000` 실행 후 http://localhost:8000/moralguard-app/index.html 로 접속해주세요.';
+  }
+}
+
+function renderAll() {
+  renderHome();
+  renderTrends();
+  renderCalendar();
+  renderComparison();
+}
+
+// ---------------------------------------------------------------- Comparison tab
+function renderComparison() {
+  const content = document.getElementById('comparison-content');
+  content.innerHTML = `
+    <div class="card" style="margin-top:6px;">
+      <h2>1. 180일 궤적 비교</h2>
+      <canvas id="traj-compare-chart" height="220"></canvas>
+      <div class="legend-row" id="traj-legend"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. 코호트 비교 (N=${COHORT.summary.n})</h2>
+      <canvas id="bell-chart" height="180"></canvas>
+      <div class="percentile-readout" id="percentile-readout"></div>
+    </div>
+
+    <div class="card">
+      <h2>3. 개입 시뮬레이션</h2>
+      <div id="intervention-scenarios"></div>
+      <div class="motivate-card" id="motivate-card"></div>
+    </div>
+  `;
+
+  renderTrajectoryCompare();
+  renderBellCurve();
+  renderInterventions();
+}
+
+function personaColor(name) {
+  // Semantic color mapping (not positional) so the best-outcome persona
+  // always reads as "good" (mint) and never collides with this app's
+  // grade color language (mint=good, amber=caution, red=risk).
+  if (name.startsWith('균형형')) return COLORS.mint;
+  if (name.startsWith('당과다형')) return COLORS.amber;
+  if (name.startsWith('과압마모형')) return COLORS.red;
+  if (name.startsWith('저위생형')) return '#a855f7';
+  return COLORS.textDim;
+}
+
+function renderTrajectoryCompare() {
+  const personas = COHORT.personas;
+  const myTrajectory = DATA.daily_series.map(r => r.DOHI);
+
+  new Chart(document.getElementById('traj-compare-chart'), {
+    type: 'line',
+    data: {
+      labels: myTrajectory.map((_, i) => i),
+      datasets: [
+        ...personas.map((p, i) => ({
+          label: p.name,
+          data: p.trajectory,
+          borderColor: personaColor(p.name),
+          borderWidth: 1.5,
+          borderDash: [4, 3],
+          pointRadius: 0,
+          tension: 0.25,
+        })),
+        {
+          label: `${DATA.patient.name} (나)`,
+          data: myTrajectory,
+          borderColor: COLORS.blue,
+          borderWidth: 2.5,
+          pointRadius: 0,
+          tension: 0.2,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      scales: {
+        y: { min: 0, max: 100, title: { display: true, text: 'DOHI' } },
+        x: { title: { display: true, text: 'Day' }, ticks: { maxTicksLimit: 8 } },
+      },
+      plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
+    },
+  });
+}
+
+function gaussianPdf(x, mean, std) {
+  const coeff = 1 / (std * Math.sqrt(2 * Math.PI));
+  return coeff * Math.exp(-0.5 * Math.pow((x - mean) / std, 2));
+}
+
+function renderBellCurve() {
+  const { dohi_mean, dohi_std } = COHORT.summary;
+  const myDohi = DATA.today.DOHI;
+  const dohiArr = COHORT.distributions.dohi;
+  const percentile = (dohiArr.filter(d => d <= myDohi).length / dohiArr.length) * 100;
+
+  const xs = [];
+  const ys = [];
+  for (let x = 0; x <= 100; x += 1) {
+    xs.push(x);
+    ys.push(gaussianPdf(x, dohi_mean, dohi_std));
+  }
+  const myY = gaussianPdf(myDohi, dohi_mean, dohi_std);
+
+  new Chart(document.getElementById('bell-chart'), {
+    type: 'line',
+    data: {
+      labels: xs,
+      datasets: [
+        {
+          label: '코호트 분포',
+          data: ys,
+          borderColor: COLORS.textDim,
+          backgroundColor: 'rgba(142,142,147,0.12)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+        },
+        {
+          label: `${DATA.patient.name}`,
+          data: xs.map(x => Math.abs(x - Math.round(myDohi)) < 1 ? myY : null),
+          borderColor: COLORS.blue,
+          backgroundColor: COLORS.blue,
+          pointRadius: (ctx) => ctx.raw !== null ? 6 : 0,
+          pointHoverRadius: 6,
+          showLine: false,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      scales: {
+        y: { display: false },
+        x: { title: { display: true, text: 'DOHI' }, ticks: { stepSize: 20 } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  document.getElementById('percentile-readout').innerHTML =
+    `내 DOHI <b>${myDohi.toFixed(0)}점</b>은 코호트 ${COHORT.summary.n}명 중 <b>상위 ${(100 - percentile).toFixed(0)}%</b> 위치입니다.`;
+}
+
+function renderInterventions() {
+  const iv = DATA.interventions;
+  const container = document.getElementById('intervention-scenarios');
+  container.innerHTML = Object.keys(iv).map(key => `
+    <div class="scenario-block">
+      <h3>${iv[key].label}</h3>
+      <canvas id="scenario-${key}" height="140"></canvas>
+      <div class="scenario-delta ${iv[key].delta_dohi >= 0 ? 'pos' : 'neg'}">
+        ${iv[key].delta_dohi >= 0 ? '+' : ''}${iv[key].delta_dohi.toFixed(1)}점
+      </div>
+    </div>
+  `).join('');
+
+  Object.keys(iv).forEach(key => {
+    const s = iv[key];
+    new Chart(document.getElementById(`scenario-${key}`), {
+      type: 'bar',
+      data: {
+        labels: ['DOHI'],
+        datasets: [
+          { label: 'Before', data: [s.before.DOHI], backgroundColor: '#c7c7cc', borderRadius: 6, barThickness: 32 },
+          { label: 'After', data: [s.after.DOHI], backgroundColor: COLORS.mint, borderRadius: 6, barThickness: 32 },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        animation: false,
+        scales: { x: { min: 0, max: 100 } },
+        plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
+      },
+    });
+  });
+
+  const totalDelta = Object.values(iv).reduce((sum, s) => sum + s.delta_dohi, 0);
+  document.getElementById('motivate-card').innerHTML =
+    `🎯 습관을 모두 교정하면 예상 DOHI <b>+${totalDelta.toFixed(0)}점</b> 향상!`;
+}
+
+// ---------------------------------------------------------------- Calendar tab
+let calendarYear, calendarMonth; // month: 0-11
+let selectedDate = null;
+let dailyByDate = null;
+
+function renderCalendar() {
+  if (!dailyByDate) {
+    dailyByDate = {};
+    DATA.daily_series.forEach(r => { dailyByDate[r.date] = r; });
+    const today = new Date(DATA.patient.today_date);
+    calendarYear = today.getFullYear();
+    calendarMonth = today.getMonth();
+    selectedDate = DATA.patient.today_date;
+  }
+
+  const content = document.getElementById('calendar-content');
+  content.innerHTML = `
+    <div class="card" style="margin-top:6px;">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" id="cal-prev">‹</button>
+        <div class="cal-title" id="cal-title"></div>
+        <button class="cal-nav-btn" id="cal-next">›</button>
+      </div>
+      <div class="cal-weekdays">
+        <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span><i class="cal-dot" style="background:${gradeColor('Excellent')}"></i>Excellent</span>
+        <span><i class="cal-dot" style="background:${gradeColor('Good')}"></i>Good</span>
+        <span><i class="cal-dot" style="background:${gradeColor('Fair')}"></i>Fair</span>
+        <span><i class="cal-dot" style="background:${gradeColor('Poor')}"></i>Poor</span>
+      </div>
+    </div>
+    <div class="card cal-detail" id="cal-detail"></div>
+  `;
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    calendarMonth -= 1;
+    if (calendarMonth < 0) { calendarMonth = 11; calendarYear -= 1; }
+    drawCalendarGrid();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    calendarMonth += 1;
+    if (calendarMonth > 11) { calendarMonth = 0; calendarYear += 1; }
+    drawCalendarGrid();
+  });
+
+  drawCalendarGrid();
+  renderCalendarDetail(selectedDate);
+}
+
+function fmtDate(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function drawCalendarGrid() {
+  document.getElementById('cal-title').textContent = `${calendarYear}년 ${calendarMonth + 1}월`;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const todayStr = DATA.patient.today_date;
+
+  for (let i = 0; i < firstDay; i++) {
+    grid.appendChild(document.createElement('div')).className = 'cal-cell empty';
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = fmtDate(calendarYear, calendarMonth, d);
+    const rec = dailyByDate[dateStr];
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    if (dateStr === todayStr) cell.classList.add('is-today');
+    if (dateStr === selectedDate) cell.classList.add('is-selected');
+    if (rec) {
+      cell.innerHTML = `<span class="cal-daynum">${d}</span><i class="cal-dot" style="background:${gradeColor(rec.grade)}"></i>`;
+      cell.addEventListener('click', () => {
+        selectedDate = dateStr;
+        document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('is-selected'));
+        cell.classList.add('is-selected');
+        renderCalendarDetail(dateStr);
+      });
+    } else {
+      cell.classList.add('no-data');
+      cell.innerHTML = `<span class="cal-daynum">${d}</span>`;
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function renderCalendarDetail(dateStr) {
+  const detail = document.getElementById('cal-detail');
+  const rec = dailyByDate[dateStr];
+  if (!rec) {
+    detail.innerHTML = `<h3>${dateStr}</h3><p style="color:${COLORS.textDim}; font-size:13px;">데이터가 없는 날짜입니다.</p>`;
+    return;
+  }
+  detail.innerHTML = `
+    <div class="detail-head">
+      <span class="d-title">${dateStr} 요약</span>
+      <span class="chip" style="background:${gradeColor(rec.grade)}22; color:${gradeColor(rec.grade)}">${gradeLabel(rec.grade)}</span>
+    </div>
+    <div class="detail-value">${rec.DOHI.toFixed(0)}<span style="font-size:13px; color:${COLORS.textDim}"> DOHI점</span></div>
+    <div class="cal-metric-grid">
+      <div class="mini-stat"><div class="mini-label">DRS</div><div class="mini-value">${rec.DRS.toFixed(0)}</div></div>
+      <div class="mini-stat"><div class="mini-label">ARS</div><div class="mini-value">${rec.ARS.toFixed(0)}</div></div>
+      <div class="mini-stat"><div class="mini-label">BES</div><div class="mini-value">${rec.BES.toFixed(0)}</div></div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------- Trends tab
+let trendsSessionIdx = 0;
+let pressureChart = null;
+let phChart = null;
+let phWindowHours = 24;
+
+function renderTrends() {
+  const sessions = DATA.today.sessions;
+  const content = document.getElementById('trends-content');
+  content.innerHTML = `
+    <div class="card" style="margin-top:6px;">
+      <h3>세션 선택</h3>
+      <div class="seg-group" id="session-toggler"></div>
+    </div>
+
+    <div class="card">
+      <h2>1. 압력 정밀 분석</h2>
+      <canvas id="pressure-chart" height="200"></canvas>
+      <div class="stat-grid-3" id="pressure-stats"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. pH 곡선</h2>
+      <div class="seg-group" id="ph-window-toggler">
+        <button class="seg-btn" data-hours="6">6시간</button>
+        <button class="seg-btn" data-hours="12">12시간</button>
+        <button class="seg-btn active" data-hours="24">24시간</button>
+      </div>
+      <canvas id="ph-trend-chart" height="200"></canvas>
+      <div class="warn-banner" id="ph-warning"></div>
+    </div>
+
+    <div class="card">
+      <h2>3. 구역별 커버리지 맵</h2>
+      <svg id="trends-zone-svg" viewBox="0 0 350 175" style="width:100%; height:auto;"></svg>
+      <div class="zone-legend-row"><span>0%</span><div class="bar"></div><span>100%</span></div>
+    </div>
+  `;
+
+  const toggler = document.getElementById('session-toggler');
+  toggler.innerHTML = sessions.map((s, i) =>
+    `<button class="seg-btn ${i === trendsSessionIdx ? 'active' : ''}" data-idx="${i}">${s.time}</button>`
+  ).join('');
+  toggler.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      trendsSessionIdx = parseInt(btn.dataset.idx, 10);
+      toggler.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderPressureSection();
+      renderZoneSection();
+    });
+  });
+
+  document.getElementById('ph-window-toggler').querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      phWindowHours = parseInt(btn.dataset.hours, 10);
+      document.querySelectorAll('#ph-window-toggler .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderPhSection();
+    });
+  });
+
+  renderPressureSection();
+  renderPhSection();
+  renderZoneSection();
+}
+
+function renderPressureSection() {
+  const session = DATA.today.sessions[trendsSessionIdx];
+  const t = session.pressure_timeseries.t;
+  const force = session.pressure_timeseries.force;
+
+  // point-level coloring: red where force > 3.0N (danger breach)
+  const pointColors = force.map(f => f > 3.0 ? COLORS.red : COLORS.blue);
+
+  if (pressureChart) pressureChart.destroy();
+  pressureChart = new Chart(document.getElementById('pressure-chart'), {
+    type: 'line',
+    data: {
+      labels: t,
+      datasets: [
+        {
+          label: '압력 (N)',
+          data: force,
+          borderColor: COLORS.blue,
+          segment: {
+            borderColor: (ctx) => (ctx.p0.parsed.y > 3.0 || ctx.p1.parsed.y > 3.0) ? COLORS.red : COLORS.blue,
+          },
+          borderWidth: 2.5,
+          pointRadius: 0,
+          tension: 0.15,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        y: { min: 0, max: 4.5, title: { display: true, text: 'N' } },
+        x: { title: { display: true, text: '초' }, ticks: { maxTicksLimit: 8 } },
+      },
+    },
+    plugins: [pressureBandPlugin],
+  });
+
+  const stats = document.getElementById('pressure-stats');
+  stats.innerHTML = `
+    <div class="mini-stat"><div class="mini-label">최고 압력</div><div class="mini-value" style="color:${session.max_force_N > 3.0 ? COLORS.red : COLORS.text}">${session.max_force_N}N</div></div>
+    <div class="mini-stat"><div class="mini-label">최저 압력</div><div class="mini-value">${session.min_force_N}N</div></div>
+    <div class="mini-stat"><div class="mini-label">과압 노출</div><div class="mini-value" style="color:${session.overpressure_sec > 0 ? COLORS.red : COLORS.text}">${session.overpressure_sec}초</div></div>
+  `;
+}
+
+const pressureBandPlugin = {
+  id: 'pressureBandPlugin',
+  beforeDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    const yScale = scales.y;
+    const toY = (v) => yScale.getPixelForValue(v);
+    ctx.save();
+    // normal band 0.8-2.5N green
+    ctx.fillStyle = 'rgba(52,211,153,0.12)';
+    ctx.fillRect(chartArea.left, toY(2.5), chartArea.right - chartArea.left, toY(0.8) - toY(2.5));
+    // danger band >3.0N red
+    ctx.fillStyle = 'rgba(239,68,68,0.10)';
+    ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, toY(3.0) - chartArea.top);
+    ctx.restore();
+  },
+};
+
+const phDangerFillPlugin = {
+  // Shades each below-threshold time span as a vertical band (chartArea top
+  // to bottom) rather than hugging the exact curve shape: a single-meal dip
+  // is often only a few minutes wide, which collapses to a sub-pixel sliver
+  // when tightly filled under the curve on a 6-24h axis. A minimum pixel
+  // width keeps every danger window visible regardless of zoom level.
+  id: 'phDangerFillPlugin',
+  afterDatasetsDraw(chart) {
+    const meta = chart.getDatasetMeta(0);
+    const points = meta.data;
+    if (!points || !points.length) return;
+    const { ctx, chartArea } = chart;
+    const MIN_WIDTH = 5;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(239,68,68,0.22)';
+
+    let runStart = null;
+    const flushRun = (endIdx) => {
+      if (runStart === null) return;
+      let x0 = points[runStart].x;
+      let x1 = points[endIdx].x;
+      if (x1 - x0 < MIN_WIDTH) {
+        const cx = (x0 + x1) / 2;
+        x0 = cx - MIN_WIDTH / 2;
+        x1 = cx + MIN_WIDTH / 2;
+      }
+      ctx.fillRect(x0, chartArea.top, x1 - x0, chartArea.bottom - chartArea.top);
+      runStart = null;
+    };
+
+    for (let i = 0; i < points.length; i++) {
+      const dataY = chart.data.datasets[0].data[i].y;
+      if (dataY < 5.5) {
+        if (runStart === null) runStart = i;
+      } else {
+        flushRun(i - 1);
+      }
+    }
+    flushRun(points.length - 1);
+    ctx.restore();
+  },
+};
+
+function renderPhSection() {
+  const ph = DATA.today.ph_timeseries.ph;
+  const events = DATA.today.ph_timeseries.events;
+  const windowMin = phWindowHours * 60;
+  const slice = ph.slice(-windowMin);
+  const startMinute = 1440 - slice.length;
+
+  const points = slice.map((v, i) => ({ x: (startMinute + i) - 1440, y: v }));
+  const belowMask = slice.map(v => v < 5.5);
+
+  if (phChart) phChart.destroy();
+  phChart = new Chart(document.getElementById('ph-trend-chart'), {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: '구강 pH',
+          data: points,
+          borderColor: COLORS.blue,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: false,
+        },
+        {
+          label: '임계 pH (5.5)',
+          data: points.map(p => ({ x: p.x, y: 5.5 })),
+          borderColor: COLORS.red,
+          borderDash: [6, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      animation: false,
+      plugins: { legend: { display: true, position: 'bottom' } },
+      scales: {
+        y: { min: 3.5, max: 7.5, title: { display: true, text: 'pH' } },
+        x: {
+          type: 'linear', min: -windowMin, max: 0,
+          ticks: { stepSize: Math.max(60, Math.round(windowMin / 8 / 60) * 60), callback: (v) => v === 0 ? '지금' : Math.round(v / 60) + 'h' },
+        },
+      },
+    },
+    plugins: [phDangerFillPlugin],
+  });
+
+  const belowMinutes = belowMask.filter(Boolean).length;
+  const eventsInWindow = events.filter(e => e.minute >= startMinute);
+  document.getElementById('ph-warning').innerHTML =
+    `⚠️ pH 5.5 이하 지속 시간: <b>${belowMinutes}분</b> (총 탈회 위험 시간, 최근 ${phWindowHours}시간 · 식사/간식 ${eventsInWindow.length}회)`;
+}
+
+function renderZoneSection() {
+  const session = DATA.today.sessions[trendsSessionIdx];
+  drawZoneSvg(document.getElementById('trends-zone-svg'), session.zone_coverage);
+}
+
+// ---------------------------------------------------------------- Home tab
+function coverageToColor(pct) {
+  const stops = [[0, [239, 68, 68]], [50, [245, 158, 11]], [100, [52, 211, 153]]];
+  let lo = stops[0], hi = stops[stops.length - 1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (pct >= stops[i][0] && pct <= stops[i + 1][0]) { lo = stops[i]; hi = stops[i + 1]; break; }
+  }
+  const span = hi[0] - lo[0] || 1;
+  const t = (pct - lo[0]) / span;
+  const rgb = lo[1].map((c, i) => Math.round(c + (hi[1][i] - c) * t));
+  return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+}
+
+function chipFor(status) {
+  // status: 'good' | 'warn' | 'bad'
+  return { good: 'mint', warn: 'amber', bad: 'red' }[status];
+}
+function setChip(status, text) {
+  const chip = document.getElementById('detail-chip');
+  chip.textContent = text;
+  const bg = { good: COLORS.mintPale, warn: COLORS.amberPale, bad: COLORS.redPale }[status];
+  const fg = { good: COLORS.mintDeep, warn: '#b45309', bad: '#b91c1c' }[status];
+  chip.style.background = bg;
+  chip.style.color = fg;
+}
+
+let homeDetailChart = null;
+
+function renderHomeDetail(metric) {
+  const canvas = document.getElementById('home-detail-chart');
+  const svg = document.getElementById('home-zone-svg');
+  const legend = document.getElementById('home-zone-legend');
+  const extra = document.getElementById('detail-extra');
+  extra.innerHTML = '';
+
+  const latestSession = DATA.today.sessions[DATA.today.sessions.length - 1];
+
+  if (metric === 'pressure') {
+    canvas.style.display = 'block';
+    svg.style.display = 'none';
+    legend.style.display = 'none';
+    document.getElementById('detail-title').textContent = `최근 세션 (${latestSession.time}) · 압력 변화`;
+    document.getElementById('detail-value').innerHTML = `${latestSession.avg_force_N}<span style="font-size:14px;color:${COLORS.textDim}"> N 평균</span>`;
+    const status = latestSession.max_force_N > 3.0 ? 'bad' : (latestSession.max_force_N > 2.5 ? 'warn' : 'good');
+    setChip(status, status === 'bad' ? '과압 감지' : (status === 'warn' ? '주의' : '정상'));
+
+    const t = latestSession.pressure_timeseries.t;
+    const force = latestSession.pressure_timeseries.force;
+    if (homeDetailChart) homeDetailChart.destroy();
+    homeDetailChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: t,
+        datasets: [{ data: force, borderColor: COLORS.blue, borderWidth: 2, pointRadius: 0, tension: 0.2, fill: false }],
+      },
+      options: {
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 4.5, title: { display: true, text: 'N' } },
+          x: { title: { display: true, text: '초' }, ticks: { maxTicksLimit: 6 } },
+        },
+      },
+    });
+    extra.innerHTML = `<div class="zone-legend-row"><span>과압 노출: <b>${latestSession.overpressure_sec}초</b> (최고 ${latestSession.max_force_N}N)</span></div>`;
+
+  } else if (metric === 'ph') {
+    canvas.style.display = 'block';
+    svg.style.display = 'none';
+    legend.style.display = 'none';
+    const ph = DATA.today.ph_timeseries.ph;
+    const last360 = ph.slice(-360);
+    const current = last360[last360.length - 1];
+    document.getElementById('detail-title').textContent = '실시간 · 지난 6시간';
+    document.getElementById('detail-value').innerHTML = `${current.toFixed(1)}<span style="font-size:14px;color:${COLORS.textDim}"> pH</span>`;
+    const status = current < 5.5 ? 'bad' : (current < 6.0 ? 'warn' : 'good');
+    setChip(status, status === 'bad' ? '탈회 위험' : (status === 'warn' ? '주의' : '정상'));
+
+    const homePoints = last360.map((v, i) => ({ x: i - 360, y: v }));
+    if (homeDetailChart) homeDetailChart.destroy();
+    homeDetailChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        datasets: [
+          { data: homePoints, borderColor: COLORS.blue, borderWidth: 2, pointRadius: 0, tension: 0.15, fill: false },
+          { data: homePoints.map(p => ({ x: p.x, y: 5.5 })), borderColor: COLORS.red, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
+        ],
+      },
+      options: {
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 3.5, max: 7.5, title: { display: true, text: 'pH' } },
+          x: {
+            type: 'linear', min: -360, max: 0,
+            ticks: { stepSize: 60, callback: (v) => v === 0 ? '지금' : (v / 60) + 'h' },
+          },
+        },
+      },
+      plugins: [phDangerFillPlugin],
+    });
+    const minutesBelow = last360.filter(p => p < 5.5).length;
+    extra.innerHTML = `<div class="zone-legend-row"><span>탈회 위험 노출: <b>${minutesBelow}분</b> (최근 6시간, pH&lt;5.5)</span></div>`;
+
+  } else if (metric === 'coverage') {
+    canvas.style.display = 'none';
+    svg.style.display = 'block';
+    legend.style.display = 'flex';
+    document.getElementById('detail-title').textContent = `최근 세션 (${latestSession.time}) · 18구역 커버리지`;
+    document.getElementById('detail-value').innerHTML = `${latestSession.overall_coverage_pct}<span style="font-size:14px;color:${COLORS.textDim}"> % 종합</span>`;
+    const status = latestSession.overall_coverage_pct >= 70 ? 'good' : (latestSession.overall_coverage_pct >= 50 ? 'warn' : 'bad');
+    setChip(status, status === 'good' ? '양호' : (status === 'warn' ? '보통' : '미흡'));
+    drawZoneSvg(svg, latestSession.zone_coverage);
+  }
+}
+
+function drawZoneSvg(svg, zc) {
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  // Build a simple 2-row x 9-col grid: row1 = upper arch (9 zones), row2 = lower arch (9 zones)
+  const upper = zc.buccal.slice(0, 5).concat(zc.occlusal.slice(0, 2)).concat(zc.lingual.slice(0, 2));
+  const lower = zc.buccal.slice(5, 8).concat(zc.occlusal.slice(2, 4)).concat(zc.lingual.slice(2, 6));
+  const gridRows = [
+    { label: '상악 (9구역)', y: 20, values: upper },
+    { label: '하악 (9구역)', y: 100, values: lower },
+  ];
+  gridRows.forEach(row => {
+    const labelEl = document.createElementNS(ns, 'text');
+    labelEl.setAttribute('x', 4);
+    labelEl.setAttribute('y', row.y - 4);
+    labelEl.setAttribute('fill', COLORS.textDim);
+    labelEl.setAttribute('font-size', '10');
+    labelEl.textContent = row.label;
+    svg.appendChild(labelEl);
+
+    const gap = 5;
+    const rectW = (350 - gap * (row.values.length + 1)) / row.values.length;
+    row.values.forEach((pct, i) => {
+      const x = gap + i * (rectW + gap);
+      const rect = document.createElementNS(ns, 'rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', row.y);
+      rect.setAttribute('width', rectW);
+      rect.setAttribute('height', 55);
+      rect.setAttribute('rx', 8);
+      rect.setAttribute('fill', coverageToColor(pct));
+      const title = document.createElementNS(ns, 'title');
+      title.textContent = `구역 ${i + 1}: ${pct.toFixed(0)}%`;
+      rect.appendChild(title);
+      svg.appendChild(rect);
+
+      const txt = document.createElementNS(ns, 'text');
+      txt.setAttribute('x', x + rectW / 2);
+      txt.setAttribute('y', row.y + 32);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('font-size', '11');
+      txt.setAttribute('font-weight', '700');
+      txt.setAttribute('fill', '#1c1c1e');
+      txt.textContent = pct.toFixed(0);
+      svg.appendChild(txt);
+    });
+  });
+}
+
+function renderHome() {
+  const today = DATA.today;
+  const latestSession = today.sessions[today.sessions.length - 1];
+  const currentPh = today.ph_timeseries.ph[today.ph_timeseries.ph.length - 1];
+
+  document.getElementById('home-greeting').textContent = `안녕하세요, ${DATA.patient.name}님`;
+
+  const hero = document.getElementById('status-hero');
+  hero.className = 'status-hero grade-' + today.grade;
+  document.getElementById('status-badge-text').textContent = gradeLabel(today.grade);
+  const headlines = {
+    Excellent: '구강 건강 지수가 매우 우수한 상태입니다.',
+    Good: '구강 건강 지수가 안정적이며 건강한 상태입니다.',
+    Fair: '구강 건강 지수에 약간의 주의가 필요합니다.',
+    Poor: '구강 건강 지수가 위험 수준입니다. 관리가 필요해요.',
+  };
+  document.getElementById('status-headline').textContent = `${headlines[today.grade]} (DOHI ${today.DOHI.toFixed(0)}점)`;
+
+  document.getElementById('mc-pressure').innerHTML = `${latestSession.avg_force_N}<span class="m-unit"> N</span>`;
+  document.getElementById('mc-ph').innerHTML = `${currentPh.toFixed(1)}<span class="m-unit"> pH</span>`;
+  document.getElementById('mc-coverage').innerHTML = `${latestSession.overall_coverage_pct.toFixed(0)}<span class="m-unit"> %</span>`;
+
+  document.getElementById('dot-pressure').style.background = latestSession.max_force_N > 3.0 ? COLORS.red : COLORS.mint;
+  document.getElementById('dot-ph').style.background = currentPh < 5.5 ? COLORS.red : COLORS.mint;
+  document.getElementById('dot-coverage').style.background = latestSession.overall_coverage_pct >= 70 ? COLORS.mint : COLORS.amber;
+
+  document.getElementById('stat-sessions').textContent = today.sessions.length + '회';
+  document.getElementById('stat-monitoring').textContent = DATA.daily_series.length + '일째';
+
+  document.querySelectorAll('.metric-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      renderHomeDetail(card.dataset.metric);
+    });
+  });
+
+  renderHomeDetail('pressure');
+}
+
+loadData();
+</script>
+</body>
+</html>
