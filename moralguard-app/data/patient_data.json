@@ -6574,6 +6574,11 @@
   "interventions": {
     "wait_30min": {
       "label": "식후 30분 대기 양치",
+      "affects": [
+        "DRS",
+        "DOHI"
+      ],
+      "reference_date": "2026-06-11",
       "before": {
         "DRS": 83.28,
         "ARS": 0.0,
@@ -6590,6 +6595,11 @@
     },
     "brush_2min": {
       "label": "양치 시간 2분 충족",
+      "affects": [
+        "BES",
+        "DOHI"
+      ],
+      "reference_date": "2026-06-20",
       "before": {
         "DRS": 0.0,
         "ARS": 0.0,
@@ -6606,6 +6616,11 @@
     },
     "reduce_force": {
       "label": "압력 1.5N으로 감소",
+      "affects": [
+        "ARS",
+        "DOHI"
+      ],
+      "reference_date": "2026-06-16",
       "before": {
         "DRS": 0.0,
         "ARS": 58.14,
@@ -6619,6 +6634,29 @@
         "DOHI": 86.62
       },
       "delta_dohi": 14.53
+    },
+    "combined": {
+      "label": "습관 3가지 모두 교정",
+      "affects": [
+        "DRS",
+        "ARS",
+        "BES",
+        "DOHI"
+      ],
+      "reference_date": "2026-06-11",
+      "before": {
+        "DRS": 83.28,
+        "ARS": 0.0,
+        "BES": 48.71,
+        "DOHI": 47.14
+      },
+      "after": {
+        "DRS": 31.68,
+        "ARS": 0.0,
+        "BES": 57.54,
+        "DOHI": 73.01
+      },
+      "delta_dohi": 25.87
     }
   }
 }

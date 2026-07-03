@@ -252,12 +252,28 @@ def _row_to_features(row):
 
 
 def build_interventions(df):
-    """Each scenario is anchored on its own 'worst day in the last 30 days'
-    for the specific lever being tested, so every scenario shows a
-    meaningful, non-degenerate improvement (see design discussion: using a
-    single day like 'today' can make an already-resolved habit show a
-    trivial 0-point delta)."""
+    """Each of the 3 demo scenarios is anchored on its OWN worst real day in
+    the last 30 days for the specific lever being tested (e.g. "reduce
+    force" is measured against the day force actually spiked) — using one
+    shared baseline instead breaks down because ARS depends on BOTH
+    brush_time_sec AND brush_force_N jointly: forcing the "brush 2 minutes"
+    scenario to inherit an unrelated bad-pressure baseline makes longer
+    brushing look harmful (ARS rises with brush_time_sec), which is a real
+    formula interaction but a misleading demo. Each scenario's `before` is
+    tagged with its reference date so the UI can show why the baselines
+    differ instead of presenting it as unexplained inconsistency.
+
+    The combined "fix everything" projection (used for the single
+    motivational delta) is evaluated separately on ONE real day — the worst
+    DOHI day in the last 30 — with all 3 fixes applied together, so it's an
+    internally consistent single calculation rather than an invalid sum of
+    3 deltas measured from different starting points.
+    """
     recent = df.iloc[-30:]
+    worst_drs_row = recent.loc[recent["DRS"].idxmax()]
+    worst_time_row = recent.loc[recent["brush_time_sec"].idxmin()]
+    worst_force_row = recent.loc[recent["brush_force_N"].idxmax()]
+    worst_dohi_row = recent.loc[recent["DOHI"].idxmin()]
 
     def score(row_dict):
         row_df = pd.DataFrame([row_dict])
@@ -270,43 +286,52 @@ def build_interventions(df):
             "BES": round(float(bes), 2), "DOHI": round(float(dohi), 2),
         }
 
-    def scenario(worst_row, overrides):
-        row = _row_to_features(worst_row)
+    def scenario(base_row, overrides):
+        row = _row_to_features(base_row)
         row.update(overrides)
         return row
 
-    worst_drs_row = recent.loc[recent["DRS"].idxmax()]
-    worst_time_row = recent.loc[recent["brush_time_sec"].idxmin()]
-    worst_force_row = recent.loc[recent["brush_force_N"].idxmax()]
-
-    scenarios = {
+    scenario_defs = {
         "wait_30min": {
-            "label": "식후 30분 대기 양치",
-            "before": scenario(worst_drs_row, {}),
-            "after": scenario(worst_drs_row, {"brush_delay_min": 30}),
+            "label": "식후 30분 대기 양치", "base_row": worst_drs_row,
+            "overrides": {"brush_delay_min": 30}, "affects": ["DRS", "DOHI"],
         },
         "brush_2min": {
-            "label": "양치 시간 2분 충족",
-            "before": scenario(worst_time_row, {}),
-            "after": scenario(worst_time_row, {"brush_time_sec": 120}),
+            "label": "양치 시간 2분 충족", "base_row": worst_time_row,
+            "overrides": {"brush_time_sec": 120}, "affects": ["BES", "DOHI"],
         },
         "reduce_force": {
-            "label": "압력 1.5N으로 감소",
-            "before": scenario(worst_force_row, {}),
-            "after": scenario(worst_force_row, {"brush_force_N": 1.5}),
+            "label": "압력 1.5N으로 감소", "base_row": worst_force_row,
+            "overrides": {"brush_force_N": 1.5}, "affects": ["ARS", "DOHI"],
         },
     }
 
     results = {}
-    for key, s in scenarios.items():
-        before = score(s["before"])
-        after = score(s["after"])
+    for key, s in scenario_defs.items():
+        before = score(scenario(s["base_row"], {}))
+        after = score(scenario(s["base_row"], s["overrides"]))
         results[key] = {
             "label": s["label"],
+            "affects": s["affects"],
+            "reference_date": s["base_row"]["date"],
             "before": before,
             "after": after,
             "delta_dohi": round(after["DOHI"] - before["DOHI"], 2),
         }
+
+    combined_overrides = {}
+    for s in scenario_defs.values():
+        combined_overrides.update(s["overrides"])
+    before_combined = score(scenario(worst_dohi_row, {}))
+    after_combined = score(scenario(worst_dohi_row, combined_overrides))
+    results["combined"] = {
+        "label": "습관 3가지 모두 교정",
+        "affects": ["DRS", "ARS", "BES", "DOHI"],
+        "reference_date": worst_dohi_row["date"],
+        "before": before_combined,
+        "after": after_combined,
+        "delta_dohi": round(after_combined["DOHI"] - before_combined["DOHI"], 2),
+    }
     return results
 
 

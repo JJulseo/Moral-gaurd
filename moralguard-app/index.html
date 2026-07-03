@@ -80,7 +80,7 @@
     font-size: 15px;
     flex: 0 0 auto;
   }
-  .status-bar .icons { display: flex; gap: 5px; align-items: center; }
+  .status-bar .icons { display: flex; gap: 6px; align-items: center; color: var(--text); }
 
   .app-scroll {
     flex: 1 1 auto;
@@ -97,18 +97,13 @@
   .app-header h1 {
     font-size: 30px;
     font-weight: 800;
-    color: #ef4444;
+    color: var(--mint-deep);
     margin: 0 0 2px;
     letter-spacing: -0.5px;
   }
   .app-header .greeting { color: var(--text-dim); font-size: 15px; margin: 0; }
   .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
   .header-actions { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
-  .live-pill {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 700; color: var(--red);
-  }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
   .bell-btn {
     width: 36px; height: 36px; border-radius: 50%;
     background: #fff; box-shadow: var(--shadow);
@@ -138,17 +133,18 @@
   }
   .status-hero.grade-Fair { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
   .status-hero.grade-Poor { background: linear-gradient(135deg, #fef2f2, #fee2e2); }
-  .mascot {
+  .dohi-hero-score {
     width: 96px; height: 96px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #6ee7b7, var(--mint));
-    display: flex; align-items: center; justify-content: center;
+    background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     position: relative;
     flex: 0 0 auto;
-    box-shadow: 0 8px 20px rgba(52,211,153,0.35);
+    box-shadow: 0 6px 16px rgba(13,148,136,0.18), inset 0 0 0 4px var(--mint);
   }
-  .status-hero.grade-Fair .mascot { background: radial-gradient(circle at 35% 30%, #fde68a, var(--amber)); box-shadow: 0 8px 20px rgba(245,158,11,0.35); }
-  .status-hero.grade-Poor .mascot { background: radial-gradient(circle at 35% 30%, #fca5a5, var(--red)); box-shadow: 0 8px 20px rgba(239,68,68,0.35); }
-  .mascot .face { font-size: 40px; }
+  .status-hero.grade-Fair .dohi-hero-score { box-shadow: 0 6px 16px rgba(245,158,11,0.18), inset 0 0 0 4px var(--amber); }
+  .status-hero.grade-Poor .dohi-hero-score { box-shadow: 0 6px 16px rgba(239,68,68,0.18), inset 0 0 0 4px var(--red); }
+  .dohi-hero-value { font-size: 30px; font-weight: 800; line-height: 1; color: var(--text); }
+  .dohi-hero-label { font-size: 10px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.5px; margin-top: 2px; }
   .status-copy { flex: 1 1 auto; }
   .status-badge {
     display: inline-flex; align-items: center; gap: 5px;
@@ -174,7 +170,7 @@
     cursor: pointer;
     transition: border-color .15s ease, transform .1s ease;
   }
-  .metric-card.active { border-color: var(--blue); }
+  .metric-card.active { border-color: var(--mint-deep); }
   .metric-card:active { transform: scale(0.97); }
   .metric-card .m-label { font-size: 11px; font-weight: 700; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center; }
   .metric-card .m-dot { width: 7px; height: 7px; border-radius: 50%; }
@@ -184,7 +180,7 @@
   .detail-card { margin: 14px 20px 10px; }
   .detail-head { display: flex; justify-content: space-between; align-items: baseline; }
   .detail-head .d-title { font-size: 12px; color: var(--text-dim); font-weight: 600; }
-  .detail-head .d-more { font-size: 13px; color: var(--blue); font-weight: 700; }
+  .detail-head .d-more { font-size: 13px; color: var(--mint-deep); font-weight: 700; }
   .detail-value { font-size: 26px; font-weight: 800; margin: 2px 0 8px; display: flex; align-items: baseline; gap: 8px; }
   .detail-value .chip {
     font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
@@ -237,8 +233,8 @@
     background: none; border: none;
     cursor: pointer;
   }
-  .nav-btn .nav-icon { font-size: 20px; line-height: 1; }
-  .nav-btn.active { color: var(--blue); }
+  .nav-btn .nav-icon { width: 22px; height: 22px; }
+  .nav-btn.active { color: var(--mint-deep); }
 
   .app-tab { display: none; animation: fadeIn .2s ease; }
   .app-tab.active { display: block; }
@@ -266,7 +262,7 @@
     font-weight: 700;
     cursor: pointer;
   }
-  .seg-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .seg-btn.active { background: var(--mint-deep); color: #fff; border-color: var(--mint-deep); }
 
   .stat-grid-3 { display: flex; gap: 8px; margin-top: 14px; }
   .mini-stat {
@@ -290,6 +286,32 @@
     line-height: 1.5;
   }
 
+  .trends-view { display: none; }
+  .coverage-tip {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--mint-pale);
+    color: var(--mint-deep);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.6;
+  }
+
+  .formula-block {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .formula-block.last { border-bottom: none; padding-bottom: 0; }
+  .formula-block:first-child { padding-top: 0; }
+  .formula-title { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+  .formula-eq {
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 11.5px; color: var(--text); line-height: 1.6;
+    background: var(--app-bg); border-radius: 8px; padding: 6px 8px; margin-bottom: 4px;
+  }
+  .formula-vals { font-size: 11px; color: var(--text-dim); line-height: 1.6; padding: 0 2px; }
+
   /* ---------------- calendar tab ---------------- */
   .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .cal-nav-btn {
@@ -312,8 +334,8 @@
   .cal-cell.no-data { cursor: default; opacity: 0.35; }
   .cal-daynum { font-size: 12px; font-weight: 600; }
   .cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-  .cal-cell.is-today .cal-daynum { color: var(--blue); font-weight: 800; }
-  .cal-cell.is-today { box-shadow: inset 0 0 0 1.5px var(--blue); }
+  .cal-cell.is-today .cal-daynum { color: var(--mint-deep); font-weight: 800; }
+  .cal-cell.is-today { box-shadow: inset 0 0 0 1.5px var(--mint-deep); }
   .cal-cell.is-selected { background: var(--app-bg); }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 10px; color: var(--text-dim); }
   .cal-legend span { display: flex; align-items: center; gap: 4px; }
@@ -327,6 +349,7 @@
   }
   .scenario-block { margin-bottom: 20px; }
   .scenario-block:last-child { margin-bottom: 0; }
+  .scenario-ref { font-size: 10.5px; color: var(--text-dim); margin: -4px 0 8px; }
   .scenario-delta {
     text-align: center; font-size: 18px; font-weight: 800; margin-top: 6px;
   }
@@ -346,7 +369,11 @@
     <div class="dynamic-island"></div>
     <div class="status-bar">
       <span>9:41</span>
-      <span class="icons">📶 📡 🔋</span>
+      <span class="icons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="0.7"/><rect x="5" y="5" width="3" height="7" rx="0.7"/><rect x="10" y="3" width="3" height="9" rx="0.7"/><rect x="15" y="0" width="3" height="12" rx="0.7"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 10.6c.66 0 1.2-.54 1.2-1.2S8.66 8.2 8 8.2 6.8 8.74 6.8 9.4 7.34 10.6 8 10.6zM8 6.4c-1.62 0-3.1.6-4.24 1.6a.6.6 0 1 0 .8.9A5 5 0 0 1 8 7.6c1.28 0 2.45.44 3.38 1.18a.6.6 0 0 0 .75-.94A6.2 6.2 0 0 0 8 6.4zM8 2.8C5.55 2.8 3.32 3.72 1.6 5.24a.6.6 0 1 0 .8.9A8.6 8.6 0 0 1 8 4c2.16 0 4.13.79 5.65 2.1a.6.6 0 0 0 .79-.9A9.8 9.8 0 0 0 8 2.8z"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12"><rect x="0.5" y="0.5" width="20" height="11" rx="2.5" fill="none" stroke="currentColor" opacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="1.3" fill="currentColor"/><rect x="21.5" y="4" width="1.5" height="4" rx="0.7" fill="currentColor" opacity="0.35"/></svg>
+      </span>
     </div>
 
     <div id="error-banner"></div>
@@ -362,18 +389,22 @@
               <p class="greeting" id="home-greeting">안녕하세요, 민재님</p>
             </div>
             <div class="header-actions">
-              <span class="live-pill"><span class="live-dot"></span>LIVE</span>
-              <div class="bell-btn">🔔</div>
+              <div class="bell-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="status-hero" id="status-hero">
-          <div class="mascot"><span class="face">🙂</span></div>
+          <div class="dohi-hero-score">
+            <div class="dohi-hero-value" id="dohi-hero-value">--</div>
+            <div class="dohi-hero-label">DOHI</div>
+          </div>
           <div class="status-copy">
             <div class="status-badge" id="status-badge"><span class="dot"></span><span id="status-badge-text">정상</span></div>
             <p class="headline" id="status-headline">구강 건강 지수가 안정적이며 건강한 상태입니다.</p>
-            <span class="link">› 자세한 보고서 보기</span>
+            <span class="link" id="report-link">› 자세한 보고서 보기</span>
           </div>
         </div>
 
@@ -395,7 +426,7 @@
         <div class="detail-card card">
           <div class="detail-head">
             <span class="d-title" id="detail-title">최근 세션 · 압력 변화</span>
-            <span class="d-more">상세 ›</span>
+            <span class="d-more" id="detail-more-link" style="cursor:pointer;">상세 ›</span>
           </div>
           <div class="detail-value"><span id="detail-value">--</span><span class="chip" id="detail-chip">정상</span></div>
           <canvas id="home-detail-chart" height="160"></canvas>
@@ -408,11 +439,15 @@
 
         <div class="stat-pair">
           <div class="stat-pill">
-            <div class="icon-badge">🪥</div>
+            <div class="icon-badge mint">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-2.5 0-4.5 2-4.5 4.5 0 1.2.4 2 1 3 .8 1.2 1.5 2.3 1.5 4.5a4 4 0 0 0 8 0c0-1 .3-1.7.7-2.3"/><path d="M13 8.5A4.5 4.5 0 0 1 17.5 4c1.5 0 2.5.8 2.5 2s-1 2-2.5 2c-1 0-1.5.5-1.5 1.5"/></svg>
+            </div>
             <div><div class="s-label">오늘 세션</div><div class="s-value" id="stat-sessions">-</div></div>
           </div>
           <div class="stat-pill">
-            <div class="icon-badge mint">🛡️</div>
+            <div class="icon-badge mint">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
             <div><div class="s-label">모니터링</div><div class="s-value" id="stat-monitoring">-</div></div>
           </div>
         </div>
@@ -439,10 +474,22 @@
     </div>
 
     <div class="bottom-nav">
-      <button class="nav-btn active" data-tab="home"><span class="nav-icon">🏠</span>Home</button>
-      <button class="nav-btn" data-tab="trends"><span class="nav-icon">📈</span>Trends</button>
-      <button class="nav-btn" data-tab="calendar"><span class="nav-icon">📅</span>Calendar</button>
-      <button class="nav-btn" data-tab="comparison"><span class="nav-icon">⚖️</span>Comparison</button>
+      <button class="nav-btn active" data-tab="home">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg>
+        Home
+      </button>
+      <button class="nav-btn" data-tab="trends">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>
+        Trends
+      </button>
+      <button class="nav-btn" data-tab="calendar">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v3.5M16 3v3.5"/><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg>
+        Calendar
+      </button>
+      <button class="nav-btn" data-tab="comparison">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13a2 2 0 0 0 2 2h10"/><path d="M4 17l3-3 3 3"/><path d="M17 20V7a2 2 0 0 0-2-2H5"/><path d="M20 10l-3 3-3-3"/></svg>
+        Comparison
+      </button>
     </div>
   </div>
 </div>
@@ -467,13 +514,7 @@ function gradeLabel(grade) {
 
 // ---------------------------------------------------------------- nav
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.app-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    document.getElementById('app-scroll').scrollTop = 0;
-  });
+  btn.addEventListener('click', () => goToTab(btn.dataset.tab));
 });
 
 // ---------------------------------------------------------------- data load
@@ -549,6 +590,16 @@ function renderTrajectoryCompare() {
   const personas = COHORT.personas;
   const myTrajectory = DATA.daily_series.map(r => r.DOHI);
 
+  // Zoom the y-axis to the actual data range (+10% padding) instead of a
+  // fixed 0-100 — the full-scale axis compressed every line into a flat
+  // band near the top, hiding the differences between personas/patient.
+  const allValues = personas.flatMap(p => p.trajectory).concat(myTrajectory);
+  const dataMin = Math.min(...allValues);
+  const dataMax = Math.max(...allValues);
+  const pad = Math.max(2, (dataMax - dataMin) * 0.12);
+  const yMin = Math.max(0, Math.floor((dataMin - pad) / 5) * 5);
+  const yMax = Math.min(100, Math.ceil((dataMax + pad) / 5) * 5);
+
   new Chart(document.getElementById('traj-compare-chart'), {
     type: 'line',
     data: {
@@ -559,7 +610,6 @@ function renderTrajectoryCompare() {
           data: p.trajectory,
           borderColor: personaColor(p.name),
           borderWidth: 1.5,
-          borderDash: [4, 3],
           pointRadius: 0,
           tension: 0.25,
         })),
@@ -576,7 +626,7 @@ function renderTrajectoryCompare() {
     options: {
       animation: false,
       scales: {
-        y: { min: 0, max: 100, title: { display: true, text: 'DOHI' } },
+        y: { min: yMin, max: yMax, title: { display: true, text: 'DOHI' } },
         x: { title: { display: true, text: 'Day' }, ticks: { maxTicksLimit: 8 } },
       },
       plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
@@ -643,28 +693,34 @@ function renderBellCurve() {
     `내 DOHI <b>${myDohi.toFixed(0)}점</b>은 코호트 ${COHORT.summary.n}명 중 <b>상위 ${(100 - percentile).toFixed(0)}%</b> 위치입니다.`;
 }
 
+const METRIC_LABEL = { DRS: 'DRS (탈회위험)', ARS: 'ARS (마모위험)', BES: 'BES (양치효율)', DOHI: 'DOHI (종합)' };
+
 function renderInterventions() {
   const iv = DATA.interventions;
+  const individualKeys = ['wait_30min', 'brush_2min', 'reduce_force'];
   const container = document.getElementById('intervention-scenarios');
-  container.innerHTML = Object.keys(iv).map(key => `
+
+  container.innerHTML = individualKeys.map(key => `
     <div class="scenario-block">
       <h3>${iv[key].label}</h3>
-      <canvas id="scenario-${key}" height="140"></canvas>
+      <div class="scenario-ref">기준일: ${iv[key].reference_date} (최근 30일 중 이 습관이 가장 나빴던 날)</div>
+      <canvas id="scenario-${key}" height="150"></canvas>
       <div class="scenario-delta ${iv[key].delta_dohi >= 0 ? 'pos' : 'neg'}">
-        ${iv[key].delta_dohi >= 0 ? '+' : ''}${iv[key].delta_dohi.toFixed(1)}점
+        DOHI ${iv[key].delta_dohi >= 0 ? '+' : ''}${iv[key].delta_dohi.toFixed(1)}점
       </div>
     </div>
   `).join('');
 
-  Object.keys(iv).forEach(key => {
+  individualKeys.forEach(key => {
     const s = iv[key];
+    const metrics = s.affects;
     new Chart(document.getElementById(`scenario-${key}`), {
       type: 'bar',
       data: {
-        labels: ['DOHI'],
+        labels: metrics.map(m => METRIC_LABEL[m]),
         datasets: [
-          { label: 'Before', data: [s.before.DOHI], backgroundColor: '#c7c7cc', borderRadius: 6, barThickness: 32 },
-          { label: 'After', data: [s.after.DOHI], backgroundColor: COLORS.mint, borderRadius: 6, barThickness: 32 },
+          { label: 'Before', data: metrics.map(m => s.before[m]), backgroundColor: '#c7c7cc', borderRadius: 6, barThickness: 22 },
+          { label: 'After', data: metrics.map(m => s.after[m]), backgroundColor: COLORS.mint, borderRadius: 6, barThickness: 22 },
         ],
       },
       options: {
@@ -676,9 +732,11 @@ function renderInterventions() {
     });
   });
 
-  const totalDelta = Object.values(iv).reduce((sum, s) => sum + s.delta_dohi, 0);
+  const combined = iv.combined;
   document.getElementById('motivate-card').innerHTML =
-    `🎯 습관을 모두 교정하면 예상 DOHI <b>+${totalDelta.toFixed(0)}점</b> 향상!`;
+    `🎯 ${combined.reference_date}처럼 안 좋은 날에 습관 3가지를 모두 교정했다면, 예상 DOHI가 ` +
+    `${combined.before.DOHI.toFixed(0)}점 → ${combined.after.DOHI.toFixed(0)}점 ` +
+    `(<b>${combined.delta_dohi >= 0 ? '+' : ''}${combined.delta_dohi.toFixed(0)}점</b>)으로 향상됩니다.`;
 }
 
 // ---------------------------------------------------------------- Calendar tab
@@ -798,6 +856,7 @@ let trendsSessionIdx = 0;
 let pressureChart = null;
 let phChart = null;
 let phWindowHours = 24;
+let trendsView = 'pressure';
 
 function renderTrends() {
   const sessions = DATA.today.sessions;
@@ -809,26 +868,40 @@ function renderTrends() {
     </div>
 
     <div class="card">
-      <h2>1. 압력 정밀 분석</h2>
-      <canvas id="pressure-chart" height="200"></canvas>
-      <div class="stat-grid-3" id="pressure-stats"></div>
-    </div>
-
-    <div class="card">
-      <h2>2. pH 곡선</h2>
-      <div class="seg-group" id="ph-window-toggler">
-        <button class="seg-btn" data-hours="6">6시간</button>
-        <button class="seg-btn" data-hours="12">12시간</button>
-        <button class="seg-btn active" data-hours="24">24시간</button>
+      <div class="seg-group" id="trends-view-toggler">
+        <button class="seg-btn" data-view="pressure">압력</button>
+        <button class="seg-btn" data-view="ph">pH</button>
+        <button class="seg-btn" data-view="coverage">커버리지</button>
       </div>
-      <canvas id="ph-trend-chart" height="200"></canvas>
-      <div class="warn-banner" id="ph-warning"></div>
+
+      <div class="trends-view" id="trends-view-pressure">
+        <h2 style="margin-top:16px;">압력 정밀 분석</h2>
+        <canvas id="pressure-chart" height="200"></canvas>
+        <div class="stat-grid-3" id="pressure-stats"></div>
+      </div>
+
+      <div class="trends-view" id="trends-view-ph">
+        <h2 style="margin-top:16px;">pH 곡선</h2>
+        <div class="seg-group" id="ph-window-toggler">
+          <button class="seg-btn" data-hours="6">6시간</button>
+          <button class="seg-btn" data-hours="12">12시간</button>
+          <button class="seg-btn active" data-hours="24">24시간</button>
+        </div>
+        <canvas id="ph-trend-chart" height="200"></canvas>
+        <div class="warn-banner" id="ph-warning"></div>
+      </div>
+
+      <div class="trends-view" id="trends-view-coverage">
+        <h2 style="margin-top:16px;">구역별 커버리지 맵</h2>
+        <svg id="trends-zone-svg" viewBox="0 0 350 175" style="width:100%; height:auto;"></svg>
+        <div class="zone-legend-row"><span>0%</span><div class="bar"></div><span>100%</span></div>
+        <div id="coverage-analysis"></div>
+      </div>
     </div>
 
     <div class="card">
-      <h2>3. 구역별 커버리지 맵</h2>
-      <svg id="trends-zone-svg" viewBox="0 0 350 175" style="width:100%; height:auto;"></svg>
-      <div class="zone-legend-row"><span>0%</span><div class="bar"></div><span>100%</span></div>
+      <h2>DOHI 점수 계산 과정</h2>
+      <div id="dohi-breakdown"></div>
     </div>
   `;
 
@@ -841,9 +914,13 @@ function renderTrends() {
       trendsSessionIdx = parseInt(btn.dataset.idx, 10);
       toggler.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      renderPressureSection();
-      renderZoneSection();
+      if (trendsView === 'pressure') renderPressureSection();
+      if (trendsView === 'coverage') renderZoneSection();
     });
+  });
+
+  document.getElementById('trends-view-toggler').querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectTrendsView(btn.dataset.view));
   });
 
   document.getElementById('ph-window-toggler').querySelectorAll('.seg-btn').forEach(btn => {
@@ -855,9 +932,19 @@ function renderTrends() {
     });
   });
 
-  renderPressureSection();
-  renderPhSection();
-  renderZoneSection();
+  selectTrendsView(trendsView);
+  renderDohiBreakdown();
+}
+
+function selectTrendsView(view) {
+  trendsView = view;
+  document.querySelectorAll('#trends-view-toggler .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.querySelectorAll('.trends-view').forEach(el => {
+    el.style.display = el.id === 'trends-view-' + view ? 'block' : 'none';
+  });
+  if (view === 'pressure') renderPressureSection();
+  else if (view === 'ph') renderPhSection();
+  else if (view === 'coverage') renderZoneSection();
 }
 
 function renderPressureSection() {
@@ -1026,9 +1113,109 @@ function renderPhSection() {
     `⚠️ pH 5.5 이하 지속 시간: <b>${belowMinutes}분</b> (총 탈회 위험 시간, 최근 ${phWindowHours}시간 · 식사/간식 ${eventsInWindow.length}회)`;
 }
 
+function zoneEntries(zc) {
+  const upperLabels = ['상악 협측 1', '상악 협측 2', '상악 협측 3', '상악 협측 4', '상악 협측 5', '상악 교합면 1', '상악 교합면 2', '상악 설측 1', '상악 설측 2'];
+  const lowerLabels = ['하악 협측 1', '하악 협측 2', '하악 협측 3', '하악 교합면 1', '하악 교합면 2', '하악 설측 1', '하악 설측 2', '하악 설측 3', '하악 설측 4'];
+  const upperVals = zc.buccal.slice(0, 5).concat(zc.occlusal.slice(0, 2)).concat(zc.lingual.slice(0, 2));
+  const lowerVals = zc.buccal.slice(5, 8).concat(zc.occlusal.slice(2, 4)).concat(zc.lingual.slice(2, 6));
+  const entries = [];
+  upperLabels.forEach((label, i) => entries.push({ label, pct: upperVals[i] }));
+  lowerLabels.forEach((label, i) => entries.push({ label, pct: lowerVals[i] }));
+  return entries;
+}
+
 function renderZoneSection() {
   const session = DATA.today.sessions[trendsSessionIdx];
   drawZoneSvg(document.getElementById('trends-zone-svg'), session.zone_coverage);
+
+  const entries = zoneEntries(session.zone_coverage);
+  const sorted = [...entries].sort((a, b) => a.pct - b.pct);
+  const worst = sorted.slice(0, 2);
+  const best = sorted[sorted.length - 1];
+  const avg = entries.reduce((sum, e) => sum + e.pct, 0) / entries.length;
+
+  document.getElementById('coverage-analysis').innerHTML = `
+    <div class="stat-grid-3">
+      <div class="mini-stat"><div class="mini-label">평균</div><div class="mini-value">${avg.toFixed(0)}%</div></div>
+      <div class="mini-stat"><div class="mini-label">최고</div><div class="mini-value" style="color:${COLORS.mintDeep}">${best.pct.toFixed(0)}%</div></div>
+      <div class="mini-stat"><div class="mini-label">최저</div><div class="mini-value" style="color:${COLORS.red}">${sorted[0].pct.toFixed(0)}%</div></div>
+    </div>
+    <div class="coverage-tip">
+      💡 <b>${worst[0].label}</b>(${worst[0].pct.toFixed(0)}%), <b>${worst[1].label}</b>(${worst[1].pct.toFixed(0)}%) 부위가 가장 덜 닦였습니다.
+      칫솔모를 잇몸 경계선에 45도로 기울여 해당 부위를 3~4회 더 왕복해주세요.
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------- DOHI breakdown
+const RECOVERY_TIME_JS = { high_acid: 40, medium: 25, low: 10 };
+const FOOD_LABEL = { high_acid: '고산성', medium: '중간', low: '저산성' };
+const FREQ_FACTOR_JS = { 1: 0.70, 2: 1.00, 3: 1.15 };
+const TIME_POINTS_JS = [0, 30, 45, 60, 120, 180, 240];
+const PLAQUE_POINTS_JS = [0, 12, 16, 20, 41, 50, 100];
+
+function interpJS(x, xs, ys) {
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+  for (let i = 0; i < xs.length - 1; i++) {
+    if (x >= xs[i] && x <= xs[i + 1]) {
+      const t = (x - xs[i]) / (xs[i + 1] - xs[i]);
+      return ys[i] + t * (ys[i + 1] - ys[i]);
+    }
+  }
+  return ys[ys.length - 1];
+}
+
+function pRiskJS(force) {
+  if (force <= 2.5) return 0;
+  if (force <= 3.0) return (force - 2.5) / 0.5 * 30;
+  if (force <= 3.9) return 30 + (force - 3.0) / 0.9 * 40;
+  return 100;
+}
+
+function renderDohiBreakdown() {
+  const t = DATA.daily_series[DATA.daily_series.length - 1]; // today's raw inputs + scores
+  const el = document.getElementById('dohi-breakdown');
+
+  const recovery = RECOVERY_TIME_JS[t.food_type];
+  const demPerExposure = Math.max(0, recovery - t.brush_delay_min);
+  const det = demPerExposure * t.sugar_freq_day;
+
+  const pRisk = pRiskJS(t.brush_force_N);
+  const arsRaw = pRisk * (t.brush_time_sec / 120) * (t.brush_freq / 2);
+  const isHighAcidEarly = t.food_type === 'high_acid' && t.brush_delay_min < 30;
+  const penalty = isHighAcidEarly ? 1.0 + 1.5 * (1 - t.brush_delay_min / 30) : 1.0;
+
+  const tScore = interpJS(t.brush_time_sec, TIME_POINTS_JS, PLAQUE_POINTS_JS);
+  const totalWeight = 8 * 1.0 + 4 * 1.2 + 6 * 1.5;
+  const cScore = (t.buccal_coverage_pct * 8 * 1.0 + t.occlusal_coverage_pct * 4 * 1.2 + t.lingual_coverage_pct * 6 * 1.5) / totalWeight;
+  const freqFactor = FREQ_FACTOR_JS[t.brush_freq];
+
+  el.innerHTML = `
+    <div class="formula-block">
+      <div class="formula-title">1) DRS — 탈회 위험 (${t.DRS.toFixed(1)}점)</div>
+      <div class="formula-eq">DET = max(0, recovery_time − 양치 지연) × 당 노출 빈도</div>
+      <div class="formula-vals">recovery_time(${FOOD_LABEL[t.food_type]}) ${recovery}분 − 지연 ${t.brush_delay_min.toFixed(0)}분 = ${demPerExposure.toFixed(1)}분 × ${t.sugar_freq_day.toFixed(1)}회 = DET ${det.toFixed(1)}</div>
+      <div class="formula-eq">DRS = min(100, DET ÷ 120 × 100) = <b>${t.DRS.toFixed(1)}</b></div>
+    </div>
+    <div class="formula-block">
+      <div class="formula-title">2) ARS — 마모 위험 (${t.ARS.toFixed(1)}점)</div>
+      <div class="formula-eq">ARS_raw = P_risk(압력) × (양치시간÷120) × (빈도÷2)</div>
+      <div class="formula-vals">P_risk(${t.brush_force_N.toFixed(2)}N) = ${pRisk.toFixed(1)} × (${t.brush_time_sec.toFixed(0)}s÷120) × (${t.brush_freq}회÷2) = ${arsRaw.toFixed(1)}${isHighAcidEarly ? ` · 산성식품 후 조기양치 페널티 ×${penalty.toFixed(2)}` : ''}</div>
+      <div class="formula-eq">ARS = min(100, ARS_raw × 페널티) = <b>${t.ARS.toFixed(1)}</b></div>
+    </div>
+    <div class="formula-block">
+      <div class="formula-title">3) BES — 양치 효율 (${t.BES.toFixed(1)}점)</div>
+      <div class="formula-eq">BES = 빈도계수 × (0.4 × 시간점수 + 0.6 × 커버리지점수)</div>
+      <div class="formula-vals">시간점수(${t.brush_time_sec.toFixed(0)}s) = ${tScore.toFixed(1)} · 커버리지점수(협${t.buccal_coverage_pct.toFixed(0)}%/교${t.occlusal_coverage_pct.toFixed(0)}%/설${t.lingual_coverage_pct.toFixed(0)}%) = ${cScore.toFixed(1)} · 빈도계수(${t.brush_freq}회/일) = ${freqFactor}</div>
+      <div class="formula-eq">BES = min(100, ...) = <b>${t.BES.toFixed(1)}</b></div>
+    </div>
+    <div class="formula-block last">
+      <div class="formula-title">4) DOHI — 종합 지수 (${t.DOHI.toFixed(1)}점)</div>
+      <div class="formula-eq">DOHI = 100 − (0.45×DRS + 0.25×ARS + 0.30×(100−BES))</div>
+      <div class="formula-vals">100 − (0.45×${t.DRS.toFixed(1)} + 0.25×${t.ARS.toFixed(1)} + 0.30×(100−${t.BES.toFixed(1)})) = <b>${t.DOHI.toFixed(1)}</b></div>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------- Home tab
@@ -1195,12 +1382,21 @@ function drawZoneSvg(svg, zc) {
   });
 }
 
+function goToTab(tabName) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  document.querySelectorAll('.app-tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + tabName));
+  document.getElementById('app-scroll').scrollTop = 0;
+}
+
+let homeActiveMetric = 'pressure';
+
 function renderHome() {
   const today = DATA.today;
   const latestSession = today.sessions[today.sessions.length - 1];
   const currentPh = today.ph_timeseries.ph[today.ph_timeseries.ph.length - 1];
 
   document.getElementById('home-greeting').textContent = `안녕하세요, ${DATA.patient.name}님`;
+  document.getElementById('dohi-hero-value').textContent = today.DOHI.toFixed(0);
 
   const hero = document.getElementById('status-hero');
   hero.className = 'status-hero grade-' + today.grade;
@@ -1228,8 +1424,18 @@ function renderHome() {
     card.addEventListener('click', () => {
       document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
+      homeActiveMetric = card.dataset.metric;
       renderHomeDetail(card.dataset.metric);
     });
+  });
+
+  document.getElementById('detail-more-link').addEventListener('click', () => {
+    goToTab('trends');
+    selectTrendsView(homeActiveMetric);
+  });
+  document.getElementById('report-link').addEventListener('click', () => {
+    goToTab('trends');
+    document.getElementById('dohi-breakdown').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   renderHomeDetail('pressure');
