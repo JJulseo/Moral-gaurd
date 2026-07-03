@@ -306,11 +306,29 @@
   .formula-block:first-child { padding-top: 0; }
   .formula-title { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
   .formula-eq {
-    font-family: "SF Mono", Menlo, monospace;
-    font-size: 11.5px; color: var(--text); line-height: 1.6;
-    background: var(--app-bg); border-radius: 8px; padding: 6px 8px; margin-bottom: 4px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 14.5px; color: var(--text); line-height: 1.5;
+    background: var(--app-bg); border-radius: 8px; padding: 10px 10px; margin-bottom: 4px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 3px;
   }
   .formula-vals { font-size: 11px; color: var(--text-dim); line-height: 1.6; padding: 0 2px; }
+  .mv { font-style: italic; }
+  .mv sub { font-style: normal; }
+  .frac {
+    display: inline-flex; flex-direction: column; vertical-align: middle;
+    text-align: center; margin: 0 3px; line-height: 1.15; font-size: 0.92em;
+    position: relative; top: 2px;
+  }
+  .frac .num { padding: 0 4px 2px; border-bottom: 1.3px solid currentColor; }
+  .frac .den { padding: 2px 4px 0; }
+  .formula-citation {
+    margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border);
+    font-size: 10.5px; color: var(--text-dim); line-height: 1.6;
+  }
+  .formula-note {
+    font-size: 11.5px; color: var(--mint-deep); background: var(--mint-pale);
+    border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; line-height: 1.5;
+  }
 
   /* ---------------- calendar tab ---------------- */
   .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -916,6 +934,7 @@ function renderTrends() {
       btn.classList.add('active');
       if (trendsView === 'pressure') renderPressureSection();
       if (trendsView === 'coverage') renderZoneSection();
+      renderDohiBreakdown();
     });
   });
 
@@ -1173,47 +1192,79 @@ function pRiskJS(force) {
   return 100;
 }
 
+function avgArr(arr) {
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+// -- tiny formula-markup helpers (italic variable + subscript, stacked fraction) --
+function mv(name, sub) {
+  return `<span class="mv">${name}${sub !== undefined ? `<sub>${sub}</sub>` : ''}</span>`;
+}
+function frac(numHtml, denHtml) {
+  return `<span class="frac"><span class="num">${numHtml}</span><span class="den">${denHtml}</span></span>`;
+}
+
 function renderDohiBreakdown() {
-  const t = DATA.daily_series[DATA.daily_series.length - 1]; // today's raw inputs + scores
+  const daily = DATA.daily_series[DATA.daily_series.length - 1]; // today's diet/frequency inputs
+  const session = DATA.today.sessions[trendsSessionIdx];
   const el = document.getElementById('dohi-breakdown');
 
-  const recovery = RECOVERY_TIME_JS[t.food_type];
-  const demPerExposure = Math.max(0, recovery - t.brush_delay_min);
-  const det = demPerExposure * t.sugar_freq_day;
+  // DRS depends only on diet timing (food type, delay, sugar exposure), not
+  // on which brushing session is selected, so it stays at today's value.
+  const recovery = RECOVERY_TIME_JS[daily.food_type];
+  const demPerExposure = Math.max(0, recovery - daily.brush_delay_min);
+  const det = demPerExposure * daily.sugar_freq_day;
+  const drs = Math.min(100, det / 120 * 100);
 
-  const pRisk = pRiskJS(t.brush_force_N);
-  const arsRaw = pRisk * (t.brush_time_sec / 120) * (t.brush_freq / 2);
-  const isHighAcidEarly = t.food_type === 'high_acid' && t.brush_delay_min < 30;
-  const penalty = isHighAcidEarly ? 1.0 + 1.5 * (1 - t.brush_delay_min / 30) : 1.0;
+  // ARS/BES use THIS session's own measured pressure/time/coverage, so
+  // switching sessions changes the numbers shown below.
+  const sessionForce = session.avg_force_N;
+  const sessionTime = session.duration_sec;
+  const buccalPct = avgArr(session.zone_coverage.buccal);
+  const occlusalPct = avgArr(session.zone_coverage.occlusal);
+  const lingualPct = avgArr(session.zone_coverage.lingual);
 
-  const tScore = interpJS(t.brush_time_sec, TIME_POINTS_JS, PLAQUE_POINTS_JS);
+  const pRisk = pRiskJS(sessionForce);
+  const arsRaw = pRisk * (sessionTime / 120) * (daily.brush_freq / 2);
+  const isHighAcidEarly = daily.food_type === 'high_acid' && daily.brush_delay_min < 30;
+  const penalty = isHighAcidEarly ? 1.0 + 1.5 * (1 - daily.brush_delay_min / 30) : 1.0;
+  const ars = Math.min(100, arsRaw * penalty);
+
+  const tScore = interpJS(sessionTime, TIME_POINTS_JS, PLAQUE_POINTS_JS);
   const totalWeight = 8 * 1.0 + 4 * 1.2 + 6 * 1.5;
-  const cScore = (t.buccal_coverage_pct * 8 * 1.0 + t.occlusal_coverage_pct * 4 * 1.2 + t.lingual_coverage_pct * 6 * 1.5) / totalWeight;
-  const freqFactor = FREQ_FACTOR_JS[t.brush_freq];
+  const cScore = (buccalPct * 8 * 1.0 + occlusalPct * 4 * 1.2 + lingualPct * 6 * 1.5) / totalWeight;
+  const freqFactor = FREQ_FACTOR_JS[daily.brush_freq];
+  const bes = Math.min(100, freqFactor * (0.4 * tScore + 0.6 * cScore));
+
+  const dohi = Math.max(0, Math.min(100, 100 - (0.45 * drs + 0.25 * ars + 0.30 * (100 - bes))));
 
   el.innerHTML = `
+    <div class="formula-note">현재 선택된 <b>${session.time} 세션</b>의 실측값을 대입한 계산입니다 (ARS·BES·DOHI는 세션별로 달라지며, DRS는 오늘 하루의 식습관 기준으로 공통 적용됩니다).</div>
     <div class="formula-block">
-      <div class="formula-title">1) DRS — 탈회 위험 (${t.DRS.toFixed(1)}점)</div>
-      <div class="formula-eq">DET = max(0, recovery_time − 양치 지연) × 당 노출 빈도</div>
-      <div class="formula-vals">recovery_time(${FOOD_LABEL[t.food_type]}) ${recovery}분 − 지연 ${t.brush_delay_min.toFixed(0)}분 = ${demPerExposure.toFixed(1)}분 × ${t.sugar_freq_day.toFixed(1)}회 = DET ${det.toFixed(1)}</div>
-      <div class="formula-eq">DRS = min(100, DET ÷ 120 × 100) = <b>${t.DRS.toFixed(1)}</b></div>
+      <div class="formula-title">1) DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준</div>
+      <div class="formula-eq">${mv('DET')} = max(0, ${mv('t', 'recovery')} − ${mv('t', 'delay')}) × ${mv('f', 'sugar')}</div>
+      <div class="formula-vals">${mv('t', 'recovery')}(${FOOD_LABEL[daily.food_type]}) ${recovery}분 − 지연 ${daily.brush_delay_min.toFixed(0)}분 = ${demPerExposure.toFixed(1)}분 × ${daily.sugar_freq_day.toFixed(1)}회 = ${det.toFixed(1)}</div>
+      <div class="formula-eq">${mv('DRS')} = min(100, ${frac(mv('DET'), '120')} × 100) = <b>${drs.toFixed(1)}</b></div>
     </div>
     <div class="formula-block">
-      <div class="formula-title">2) ARS — 마모 위험 (${t.ARS.toFixed(1)}점)</div>
-      <div class="formula-eq">ARS_raw = P_risk(압력) × (양치시간÷120) × (빈도÷2)</div>
-      <div class="formula-vals">P_risk(${t.brush_force_N.toFixed(2)}N) = ${pRisk.toFixed(1)} × (${t.brush_time_sec.toFixed(0)}s÷120) × (${t.brush_freq}회÷2) = ${arsRaw.toFixed(1)}${isHighAcidEarly ? ` · 산성식품 후 조기양치 페널티 ×${penalty.toFixed(2)}` : ''}</div>
-      <div class="formula-eq">ARS = min(100, ARS_raw × 페널티) = <b>${t.ARS.toFixed(1)}</b></div>
+      <div class="formula-title">2) ARS — 마모 위험 (${ars.toFixed(1)}점) · ${session.time} 세션 기준</div>
+      <div class="formula-eq">${mv('ARS', 'raw')} = ${mv('P', 'risk')} × ${frac(mv('t', 'brush'), '120')} × ${frac(mv('f', 'brush'), '2')}</div>
+      <div class="formula-vals">${mv('P', 'risk')}(${sessionForce.toFixed(2)}N) = ${pRisk.toFixed(1)} · ${mv('t', 'brush')} = ${sessionTime.toFixed(0)}s · ${mv('f', 'brush')} = ${daily.brush_freq}회/일 → ${arsRaw.toFixed(1)}${isHighAcidEarly ? ` · 조기양치 페널티 ×${penalty.toFixed(2)}` : ''}</div>
+      <div class="formula-eq">${mv('ARS')} = min(100, ${mv('ARS', 'raw')} × ${mv('k', 'erosion')}) = <b>${ars.toFixed(1)}</b></div>
     </div>
     <div class="formula-block">
-      <div class="formula-title">3) BES — 양치 효율 (${t.BES.toFixed(1)}점)</div>
-      <div class="formula-eq">BES = 빈도계수 × (0.4 × 시간점수 + 0.6 × 커버리지점수)</div>
-      <div class="formula-vals">시간점수(${t.brush_time_sec.toFixed(0)}s) = ${tScore.toFixed(1)} · 커버리지점수(협${t.buccal_coverage_pct.toFixed(0)}%/교${t.occlusal_coverage_pct.toFixed(0)}%/설${t.lingual_coverage_pct.toFixed(0)}%) = ${cScore.toFixed(1)} · 빈도계수(${t.brush_freq}회/일) = ${freqFactor}</div>
-      <div class="formula-eq">BES = min(100, ...) = <b>${t.BES.toFixed(1)}</b></div>
+      <div class="formula-title">3) BES — 양치 효율 (${bes.toFixed(1)}점) · ${session.time} 세션 기준</div>
+      <div class="formula-eq">${mv('BES')} = ${mv('k', 'freq')} × (0.4×${mv('T', 'score')} + 0.6×${mv('C', 'score')})</div>
+      <div class="formula-vals">${mv('T', 'score')}(${sessionTime.toFixed(0)}s) = ${tScore.toFixed(1)} · ${mv('C', 'score')}(협${buccalPct.toFixed(0)}%/교${occlusalPct.toFixed(0)}%/설${lingualPct.toFixed(0)}%) = ${cScore.toFixed(1)} · ${mv('k', 'freq')}(${daily.brush_freq}회/일) = ${freqFactor}</div>
+      <div class="formula-eq">${mv('BES')} = min(100, ...) = <b>${bes.toFixed(1)}</b></div>
     </div>
     <div class="formula-block last">
-      <div class="formula-title">4) DOHI — 종합 지수 (${t.DOHI.toFixed(1)}점)</div>
-      <div class="formula-eq">DOHI = 100 − (0.45×DRS + 0.25×ARS + 0.30×(100−BES))</div>
-      <div class="formula-vals">100 − (0.45×${t.DRS.toFixed(1)} + 0.25×${t.ARS.toFixed(1)} + 0.30×(100−${t.BES.toFixed(1)})) = <b>${t.DOHI.toFixed(1)}</b></div>
+      <div class="formula-title">4) DOHI — 종합 지수 (${dohi.toFixed(1)}점)</div>
+      <div class="formula-eq">${mv('DOHI')} = 100 − (0.45×${mv('DRS')} + 0.25×${mv('ARS')} + 0.30×(100−${mv('BES')}))</div>
+      <div class="formula-vals">100 − (0.45×${drs.toFixed(1)} + 0.25×${ars.toFixed(1)} + 0.30×(100−${bes.toFixed(1)})) = <b>${dohi.toFixed(1)}</b></div>
+    </div>
+    <div class="formula-citation">
+      참고문헌: Stephan &amp; Miller (1943) 구강 pH 회복 곡선 · Attin et al., <i>Caries Res</i> (2001) 산-마모 상승작용 · Creeth et al., <i>J Dent Hyg</i> (2009) 양치시간-플라크 제거율 · Featherstone, <i>Oral Health Prev Dent</i> (2004) 종합 위험도 가중합
     </div>
   `;
 }
@@ -1407,7 +1458,7 @@ function renderHome() {
     Fair: '구강 건강 지수에 약간의 주의가 필요합니다.',
     Poor: '구강 건강 지수가 위험 수준입니다. 관리가 필요해요.',
   };
-  document.getElementById('status-headline').textContent = `${headlines[today.grade]} (DOHI ${today.DOHI.toFixed(0)}점)`;
+  document.getElementById('status-headline').textContent = headlines[today.grade];
 
   document.getElementById('mc-pressure').innerHTML = `${latestSession.avg_force_N}<span class="m-unit"> N</span>`;
   document.getElementById('mc-ph').innerHTML = `${currentPh.toFixed(1)}<span class="m-unit"> pH</span>`;
