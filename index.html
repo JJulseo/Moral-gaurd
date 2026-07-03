@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OralGuard Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --sky: #38bdf8;
+    --mint: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .container { max-width: 768px; margin: 0 auto; padding: 16px 16px 48px; }
+  header.app-header { text-align: center; padding: 20px 16px 8px; }
+  header.app-header h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  header.app-header p { color: var(--text-dim); margin: 0; font-size: 0.85rem; }
+
+  nav.tabnav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 12px 16px;
+    max-width: 768px;
+    margin: 0 auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  nav.tabnav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 0 0 auto;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .tab-btn.active {
+    background: var(--sky);
+    color: #04202f;
+    border-color: var(--sky);
+    font-weight: 600;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active {
+    display: block;
+    animation: fadeInUp .25s ease;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 12px; }
+  .card h3 { font-size: 0.9rem; margin: 0 0 8px; color: var(--text-dim); font-weight: 600; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .gauge-wrap { position: relative; text-align: center; }
+  .gauge-wrap canvas { max-height: 130px; }
+  .gauge-label { font-size: 0.8rem; color: var(--text-dim); margin-top: -4px; }
+  .gauge-feedback { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; min-height: 2.4em; }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .badge.Excellent, .badge.Good { background: rgba(52,211,153,0.15); color: var(--mint); }
+  .badge.Fair { background: rgba(56,189,248,0.15); color: var(--sky); }
+  .badge.Poor { background: rgba(248,113,113,0.15); color: var(--red); }
+
+  .dohi-hero { text-align: center; }
+  .dohi-hero .value { font-size: 3rem; font-weight: 700; line-height: 1; }
+  .dohi-hero .sub { color: var(--text-dim); font-size: 0.85rem; margin-top: 4px; }
+
+  label.field-label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--sky); }
+  .seg-group { display: flex; gap: 8px; margin-bottom: 16px; }
+  .seg-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .seg-btn.active { background: var(--sky); color: #04202f; border-color: var(--sky); font-weight: 600; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .stat-row .stat-value { font-size: 1.3rem; font-weight: 700; }
+
+  .zone-legend { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-dim); margin-top: 8px; }
+  .zone-legend .swatch-bar { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red), var(--amber), var(--mint)); }
+
+  .bar-track {
+    position: relative;
+    height: 22px;
+    background: var(--border);
+    border-radius: 11px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .bar-fill { height: 100%; background: var(--sky); border-radius: 11px 0 0 11px; }
+  .bar-band {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: rgba(52,211,153,0.25);
+  }
+  .bar-marker {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    width: 2px;
+    background: var(--text);
+  }
+
+  .persona-card { border-left: 4px solid var(--sky); padding-left: 12px; margin-bottom: 12px; }
+  .persona-card .name { font-weight: 700; font-size: 0.95rem; }
+  .persona-card .meta { font-size: 0.78rem; color: var(--text-dim); }
+
+  .legend-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 8px; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+
+  .summary-card { text-align: center; }
+  .summary-card .delta { font-size: 1.6rem; font-weight: 700; }
+  .summary-card .delta.pos { color: var(--mint); }
+  .summary-card .delta.neg { color: var(--red); }
+
+  #error-banner {
+    display: none;
+    background: rgba(248,113,113,0.12);
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin: 16px;
+    font-size: 0.85rem;
+  }
+
+  .exposure-readout { text-align: center; margin-top: 8px; }
+  .exposure-readout .big { font-size: 1.6rem; font-weight: 700; color: var(--red); }
+  .exposure-readout .lbl { font-size: 0.8rem; color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🦷 OralGuard Dashboard</h1>
+  <p>스마트 칫솔 센서 데이터 + 구강 pH 시뮬레이션 기반 일별 구강 건강 지수</p>
+</header>
+
+<div id="error-banner"></div>
+
+<nav class="tabnav" id="tabnav">
+  <button class="tab-btn active" data-tab="tab1">오늘의 DOHI</button>
+  <button class="tab-btn" data-tab="tab2">스테판 곡선</button>
+  <button class="tab-btn" data-tab="tab3">양치 분석</button>
+  <button class="tab-btn" data-tab="tab4">180일 궤적</button>
+  <button class="tab-btn" data-tab="tab5">코호트 비교</button>
+  <button class="tab-btn" data-tab="tab6">개입 시뮬레이션</button>
+</nav>
+
+<div class="container">
+
+  <!-- TAB 1 -->
+  <section id="tab1" class="tab-content active">
+    <div class="card dohi-hero">
+      <div class="gauge-label">종합 DOHI (Daily Oral Health Index)</div>
+      <div class="value" id="t1-dohi-value">--</div>
+      <div id="t1-grade-badge" class="badge">--</div>
+      <div class="sub" id="t1-person-id"></div>
+    </div>
+
+    <div class="card">
+      <h2>세부 점수</h2>
+      <div class="grid-3">
+        <div class="gauge-wrap">
+          <canvas id="gauge-drs"></canvas>
+          <div class="gauge-label">DRS (탈회 위험)</div>
+          <div class="gauge-feedback" id="fb-drs"></div>
+        </div>
+        <div class="gauge-wrap">
+          <canvas id="gauge-ars"></canvas>
+          <div class="gauge-label">ARS (마모 위험)</div>
+          <div class="gauge-feedback" id="fb-ars"></div>
+        </div>
+        <div class="gauge-wrap">
+          <canvas id="gauge-bes"></canvas>
+          <div class="gauge-label">BES (양치 효율)</div>
+          <div class="gauge-feedback" id="fb-bes"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2 -->
+  <section id="tab2" class="tab-content">
+    <div class="card">
+      <h2>스테판 곡선 시뮬레이터</h2>
+      <label class="field-label">식사 횟수: <span id="meal-count-val">3</span>회/일</label>
+      <input type="range" id="meal-count" min="1" max="6" step="1" value="3">
+
+      <label class="field-label" style="margin-top:16px;">식품 유형</label>
+      <div class="seg-group" id="food-type-group">
+        <button class="seg-btn" data-food="high_acid">고산성</button>
+        <button class="seg-btn active" data-food="medium">중간</button>
+        <button class="seg-btn" data-food="low">저산성</button>
+      </div>
+
+      <label class="field-label">양치 지연 시간: <span id="brush-delay-val">30</span>분</label>
+      <input type="range" id="brush-delay" min="0" max="120" step="5" value="30">
+
+      <canvas id="stephan-chart" height="220"></canvas>
+      <div class="exposure-readout">
+        <div class="big" id="exposure-minutes">--</div>
+        <div class="lbl">탈회 위험 노출 시간 (pH &lt; 5.5, 분/일)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3 -->
+  <section id="tab3" class="tab-content">
+    <div class="card">
+      <h2>18구역 커버리지 히트맵</h2>
+      <svg id="zone-svg" viewBox="0 0 400 220" style="width:100%; height:auto;"></svg>
+      <div class="zone-legend">
+        <span>0%</span>
+        <div class="swatch-bar"></div>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>압력 &amp; 시간</h2>
+      <div class="grid-2">
+        <div class="gauge-wrap">
+          <canvas id="gauge-pressure"></canvas>
+          <div class="gauge-label">브러싱 압력 (N)</div>
+        </div>
+        <div>
+          <div class="stat-row"><span class="gauge-label">브러싱 시간</span><span class="stat-value" id="time-value">--s</span></div>
+          <div class="bar-track">
+            <div class="bar-band" id="time-band"></div>
+            <div class="bar-fill" id="time-fill"></div>
+            <div class="bar-marker" id="time-marker"></div>
+          </div>
+          <div class="legend-row">권장 범위: 120–180초 (음영 구간)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4 -->
+  <section id="tab4" class="tab-content">
+    <div class="card">
+      <h2>페르소나별 180일 DOHI 궤적</h2>
+      <canvas id="trajectory-chart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <h2>페르소나 특징</h2>
+      <div id="persona-cards"></div>
+    </div>
+  </section>
+
+  <!-- TAB 5 -->
+  <section id="tab5" class="tab-content">
+    <div class="card">
+      <h2>코호트 내 내 위치 (N=300)</h2>
+      <h3 style="margin-bottom:2px;">인원 수 (명)</h3>
+      <canvas id="percentile-chart" height="160"></canvas>
+      <div class="sub" style="text-align:center; margin-top:8px;" id="percentile-readout"></div>
+    </div>
+    <div class="card">
+      <h2>등급별 분포</h2>
+      <canvas id="grade-donut" height="220"></canvas>
+    </div>
+  </section>
+
+  <!-- TAB 6 -->
+  <section id="tab6" class="tab-content">
+    <div class="card">
+      <h2>S1. 고산성 식품 후 양치 지연</h2>
+      <canvas id="s1-chart" height="180"></canvas>
+      <div class="summary-card"><div class="delta" id="s1-delta">--</div><div class="sub" id="s1-text"></div></div>
+    </div>
+    <div class="card">
+      <h2>S2. 양치 시간 45초 → 120초</h2>
+      <canvas id="s2-chart" height="180"></canvas>
+      <div class="summary-card"><div class="delta" id="s2-delta">--</div><div class="sub" id="s2-text"></div></div>
+    </div>
+    <div class="card">
+      <h2>S3. 브러싱 압력 3N → 1.5N</h2>
+      <canvas id="s3-chart" height="180"></canvas>
+      <div class="summary-card"><div class="delta" id="s3-delta">--</div><div class="sub" id="s3-text"></div></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------- theme
+const COLORS = { sky: '#38bdf8', mint: '#34d399', red: '#f87171', amber: '#fbbf24', border: '#334155', text: '#e2e8f0', textDim: '#94a3b8' };
+Chart.defaults.color = COLORS.textDim;
+Chart.defaults.borderColor = COLORS.border;
+Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+// ---------------------------------------------------------------- tab nav
+document.getElementById('tabnav').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(btn.dataset.tab).classList.add('active');
+});
+
+// ---------------------------------------------------------------- gauge factory
+const centerTextPlugin = {
+  id: 'centerText',
+  afterDraw(chart, args, opts) {
+    if (!opts || opts.text === undefined) return;
+    const { ctx, chartArea } = chart;
+    const x = (chartArea.left + chartArea.right) / 2;
+    const y = chartArea.bottom - (chartArea.bottom - chartArea.top) * 0.08;
+    ctx.save();
+    ctx.font = '700 22px system-ui, sans-serif';
+    ctx.fillStyle = COLORS.text;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(opts.text, x, y);
+    ctx.restore();
+  }
+};
+Chart.register(centerTextPlugin);
+
+function makeGauge(canvasId, value, maxValue, fillColor, displayText) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+  const pct = Math.max(0, Math.min(100, (value / maxValue) * 100));
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [pct, 100 - pct],
+        backgroundColor: [fillColor, COLORS.border],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      rotation: -90,
+      circumference: 180,
+      cutout: '75%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+        centerText: { text: displayText !== undefined ? displayText : Math.round(value).toString() },
+      },
+      animation: { duration: 400 },
+    },
+    plugins: [centerTextPlugin],
+  });
+}
+
+function riskColor(value, thresholds = [30, 60]) {
+  // higher = worse (DRS, ARS)
+  if (value < thresholds[0]) return COLORS.mint;
+  if (value < thresholds[1]) return COLORS.amber;
+  return COLORS.red;
+}
+function goodColor(value, thresholds = [40, 70]) {
+  // higher = better (BES)
+  if (value < thresholds[0]) return COLORS.red;
+  if (value < thresholds[1]) return COLORS.amber;
+  return COLORS.mint;
+}
+
+// ---------------------------------------------------------------- data load
+let DATA = null;
+
+async function loadData() {
+  try {
+    const res = await fetch('data/cohort_results.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    DATA = await res.json();
+    renderAll(DATA);
+  } catch (err) {
+    const banner = document.getElementById('error-banner');
+    banner.style.display = 'block';
+    banner.textContent = '데이터를 불러오지 못했습니다 (' + err.message + '). ' +
+      'file:// 프로토콜에서는 fetch가 차단됩니다. 저장소 루트에서 `python3 -m http.server 8000` 실행 후 ' +
+      'http://localhost:8000/index.html 로 접속해주세요.';
+  }
+}
+
+function renderAll(data) {
+  renderTab1(data);
+  renderTab2(data);
+  renderTab3(data);
+  renderTab4(data);
+  renderTab5(data);
+  renderTab6(data);
+}
+
+// ---------------------------------------------------------------- Tab 1
+const FEEDBACK = {
+  drs: [
+    [30, '당 노출 관리가 양호합니다. 지금 습관을 유지하세요.'],
+    [60, '식사 후 당 노출 시간이 다소 깁니다. 양치를 조금 더 서둘러보세요.'],
+    [101, '탈회 위험이 높습니다. 식사 후 방치 시간을 크게 줄여야 합니다.'],
+  ],
+  ars: [
+    [30, '브러싱 압력이 적절합니다.'],
+    [60, '압력이 다소 강합니다. 손목 힘을 빼고 부드럽게 닦아보세요.'],
+    [101, '과도한 압력으로 마모 위험이 높습니다. 압력을 크게 낮추세요.'],
+  ],
+  bes: [
+    [40, '양치 효율이 낮습니다. 시간과 커버리지를 함께 늘려보세요.'],
+    [70, '양치 효율이 보통입니다. 사각지대를 조금 더 신경써보세요.'],
+    [101, '양치 효율이 우수합니다. 훌륭한 습관이에요!'],
+  ],
+};
+function feedbackFor(key, value) {
+  for (const [limit, text] of FEEDBACK[key]) {
+    if (value < limit) return text;
+  }
+  return '';
+}
+
+function renderTab1(data) {
+  const p = data.demo_patient;
+  document.getElementById('t1-dohi-value').textContent = p.DOHI.toFixed(0);
+  const badge = document.getElementById('t1-grade-badge');
+  badge.textContent = p.grade;
+  badge.className = 'badge ' + p.grade;
+  document.getElementById('t1-person-id').textContent = p.person_id + ' · 코호트 대표 예시 환자';
+
+  makeGauge('gauge-drs', p.DRS, 100, riskColor(p.DRS));
+  makeGauge('gauge-ars', p.ARS, 100, riskColor(p.ARS));
+  makeGauge('gauge-bes', p.BES, 100, goodColor(p.BES));
+
+  document.getElementById('fb-drs').textContent = feedbackFor('drs', p.DRS);
+  document.getElementById('fb-ars').textContent = feedbackFor('ars', p.ARS);
+  document.getElementById('fb-bes').textContent = feedbackFor('bes', p.BES);
+}
+
+// ---------------------------------------------------------------- Tab 2 (Stephan curve)
+const TROUGH = { high_acid: 4.2, medium: 5.4, low: 6.2 };
+const RECOVERY = { high_acid: 40, medium: 25, low: 10 };
+const PH_BASELINE = 7.0;
+const CRITICAL_PH = 5.5;
+const DROP_DURATION_MIN = 2;
+const WAKING_WINDOW_MIN = 960;
+
+function pHAtMinutesSinceMeal(t, foodType, brushDelay) {
+  if (t < 0) return PH_BASELINE;
+  if (t >= brushDelay) return PH_BASELINE;
+  const trough = TROUGH[foodType];
+  const tau = RECOVERY[foodType] / 3;
+  if (t <= DROP_DURATION_MIN) {
+    return PH_BASELINE + (trough - PH_BASELINE) * (t / DROP_DURATION_MIN);
+  }
+  const tRec = t - DROP_DURATION_MIN;
+  return trough + (PH_BASELINE - trough) * (1 - Math.exp(-tRec / tau));
+}
+
+function simulateDayCurve(mealCount, foodType, brushDelay) {
+  const mealInterval = WAKING_WINDOW_MIN / mealCount;
+  const mealTimes = [];
+  for (let i = 0; i < mealCount; i++) mealTimes.push(i * mealInterval);
+
+  const xs = [];
+  const ys = [];
+  let exposureMinutes = 0;
+  for (let t = 0; t <= WAKING_WINDOW_MIN; t += 1) {
+    // pH at t = min across all meal curves active by time t (worst/lowest wins)
+    let phValue = PH_BASELINE;
+    for (const mt of mealTimes) {
+      if (mt <= t) {
+        const c = pHAtMinutesSinceMeal(t - mt, foodType, brushDelay);
+        phValue = Math.min(phValue, c);
+      }
+    }
+    xs.push(t);
+    ys.push(phValue);
+    if (phValue < CRITICAL_PH) exposureMinutes += 1;
+  }
+  return { xs, ys, exposureMinutes };
+}
+
+let stephanChart = null;
+function renderTab2(data) {
+  const mealSlider = document.getElementById('meal-count');
+  const delaySlider = document.getElementById('brush-delay');
+  const foodGroup = document.getElementById('food-type-group');
+  let currentFood = data.demo_patient.food_type in TROUGH ? data.demo_patient.food_type : 'medium';
+
+  foodGroup.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.food === currentFood);
+  });
+  delaySlider.value = Math.min(120, Math.round(data.demo_patient.brush_delay_min));
+  document.getElementById('brush-delay-val').textContent = delaySlider.value;
+
+  function update() {
+    const mealCount = parseInt(mealSlider.value, 10);
+    const brushDelay = parseInt(delaySlider.value, 10);
+    document.getElementById('meal-count-val').textContent = mealCount;
+    document.getElementById('brush-delay-val').textContent = brushDelay;
+
+    const { xs, ys, exposureMinutes } = simulateDayCurve(mealCount, currentFood, brushDelay);
+    document.getElementById('exposure-minutes').textContent = exposureMinutes + ' 분';
+
+    const points = xs.map((t, i) => ({ x: t, y: ys[i] }));
+    const thresholdPoints = xs.map(t => ({ x: t, y: CRITICAL_PH }));
+
+    if (!stephanChart) {
+      stephanChart = new Chart(document.getElementById('stephan-chart'), {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: '구강 pH',
+              data: points,
+              borderColor: COLORS.sky,
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.15,
+            },
+            {
+              label: '임계 pH (5.5)',
+              data: thresholdPoints,
+              borderColor: COLORS.red,
+              borderWidth: 1.5,
+              borderDash: [6, 4],
+              pointRadius: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 0 },
+          scales: {
+            y: { min: 3.5, max: 7.5, title: { display: true, text: 'pH' } },
+            x: {
+              type: 'linear',
+              min: 0,
+              max: WAKING_WINDOW_MIN,
+              ticks: { stepSize: 60, callback: (v) => (v / 60) + 'h' },
+              title: { display: true, text: '시간' },
+            },
+          },
+          plugins: { legend: { display: true, position: 'bottom' } },
+        },
+      });
+    } else {
+      stephanChart.data.datasets[0].data = points;
+      stephanChart.data.datasets[1].data = thresholdPoints;
+      stephanChart.update('none');
+    }
+  }
+
+  mealSlider.oninput = update;
+  delaySlider.oninput = update;
+  foodGroup.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.onclick = () => {
+      currentFood = btn.dataset.food;
+      foodGroup.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      update();
+    };
+  });
+
+  update();
+}
+
+// ---------------------------------------------------------------- Tab 3
+function coverageToColor(pct) {
+  const stops = [[0, [248, 113, 113]], [50, [251, 191, 36]], [100, [52, 211, 153]]];
+  let lo = stops[0], hi = stops[stops.length - 1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (pct >= stops[i][0] && pct <= stops[i + 1][0]) { lo = stops[i]; hi = stops[i + 1]; break; }
+  }
+  const span = hi[0] - lo[0] || 1;
+  const t = (pct - lo[0]) / span;
+  const rgb = lo[1].map((c, i) => Math.round(c + (hi[1][i] - c) * t));
+  return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+}
+
+function renderTab3(data) {
+  const zc = data.demo_patient.zone_coverage;
+  const svg = document.getElementById('zone-svg');
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const rows = [
+    { label: '협측 (Buccal)', y: 10, values: zc.buccal },
+    { label: '교합면 (Occlusal)', y: 90, values: zc.occlusal },
+    { label: '설측 (Lingual)', y: 160, values: zc.lingual },
+  ];
+
+  rows.forEach(row => {
+    const labelEl = document.createElementNS(ns, 'text');
+    labelEl.setAttribute('x', 4);
+    labelEl.setAttribute('y', row.y - 2);
+    labelEl.setAttribute('fill', COLORS.textDim);
+    labelEl.setAttribute('font-size', '10');
+    labelEl.textContent = row.label;
+    svg.appendChild(labelEl);
+
+    const gap = 6;
+    const rectW = (400 - gap * (row.values.length + 1)) / row.values.length;
+    row.values.forEach((pct, i) => {
+      const rect = document.createElementNS(ns, 'rect');
+      const x = gap + i * (rectW + gap);
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', row.y);
+      rect.setAttribute('width', rectW);
+      rect.setAttribute('height', 55);
+      rect.setAttribute('rx', 6);
+      rect.setAttribute('fill', coverageToColor(pct));
+      const title = document.createElementNS(ns, 'title');
+      title.textContent = `Zone ${i + 1}: ${pct.toFixed(0)}%`;
+      rect.appendChild(title);
+      svg.appendChild(rect);
+
+      const txt = document.createElementNS(ns, 'text');
+      txt.setAttribute('x', x + rectW / 2);
+      txt.setAttribute('y', row.y + 32);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('font-size', '11');
+      txt.setAttribute('font-weight', '700');
+      txt.setAttribute('fill', '#0f172a');
+      txt.textContent = pct.toFixed(0);
+      svg.appendChild(txt);
+    });
+  });
+
+  const p = data.demo_patient;
+  const forceBand = p.brush_force_N <= 2.5 ? COLORS.mint : (p.brush_force_N <= 3.0 ? COLORS.amber : COLORS.red);
+  makeGauge('gauge-pressure', p.brush_force_N, 5.0, forceBand, p.brush_force_N.toFixed(1) + 'N');
+
+  document.getElementById('time-value').textContent = p.brush_time_sec.toFixed(0) + 's';
+  const timePct = Math.min(100, (p.brush_time_sec / 240) * 100);
+  document.getElementById('time-fill').style.width = timePct + '%';
+  const bandLeft = (120 / 240) * 100;
+  const bandWidth = ((180 - 120) / 240) * 100;
+  const band = document.getElementById('time-band');
+  band.style.left = bandLeft + '%';
+  band.style.width = bandWidth + '%';
+  document.getElementById('time-marker').style.left = timePct + '%';
+}
+
+// ---------------------------------------------------------------- Tab 4
+function renderTab4(data) {
+  const personas = data.personas;
+  const accentOrder = [COLORS.sky, COLORS.mint, COLORS.red];
+  const days = personas[0].trajectory.map((_, i) => i);
+
+  new Chart(document.getElementById('trajectory-chart'), {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets: personas.map((p, i) => ({
+        label: p.name,
+        data: p.trajectory,
+        borderColor: accentOrder[i % accentOrder.length],
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+      })),
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { min: 0, max: 100, title: { display: true, text: 'DOHI' } },
+        x: { title: { display: true, text: 'Day' }, ticks: { autoSkip: true, maxTicksLimit: 10 } },
+      },
+      plugins: { legend: { display: true, position: 'bottom' } },
+    },
+  });
+
+  const cardsEl = document.getElementById('persona-cards');
+  cardsEl.innerHTML = personas.map((p, i) => `
+    <div class="persona-card" style="border-color:${accentOrder[i % accentOrder.length]}">
+      <div class="name">${p.name} <span class="meta">(n=${p.n})</span></div>
+      <div class="meta">평균 DOHI ${p.dohi_mean.toFixed(1)} · DRS ${p.drs_mean.toFixed(1)} · ARS ${p.ars_mean.toFixed(1)} · BES ${p.bes_mean.toFixed(1)}</div>
+    </div>
+  `).join('');
+}
+
+// ---------------------------------------------------------------- Tab 5
+function renderTab5(data) {
+  const dohiArr = data.distributions.dohi;
+  const myDohi = data.demo_patient.DOHI;
+  const percentile = (dohiArr.filter(d => d <= myDohi).length / dohiArr.length) * 100;
+  document.getElementById('percentile-readout').textContent =
+    `내 DOHI ${myDohi.toFixed(1)}점은 코호트 300명 중 상위 ${(100 - percentile).toFixed(0)}% (하위 ${percentile.toFixed(0)}%) 수준입니다.`;
+
+  const binCount = 10;
+  const binSize = 100 / binCount;
+  const bins = new Array(binCount).fill(0);
+  dohiArr.forEach(d => {
+    const idx = Math.min(binCount - 1, Math.floor(d / binSize));
+    bins[idx] += 1;
+  });
+  const myBin = Math.min(binCount - 1, Math.floor(myDohi / binSize));
+
+  new Chart(document.getElementById('percentile-chart'), {
+    type: 'bar',
+    data: {
+      labels: bins.map((_, i) => `${(i * binSize).toFixed(0)}-${((i + 1) * binSize).toFixed(0)}`),
+      datasets: [{
+        label: '코호트 인원 수',
+        data: bins,
+        backgroundColor: bins.map((_, i) => i === myBin ? COLORS.sky : COLORS.border),
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { x: { title: { display: true, text: 'DOHI 구간' } }, y: { beginAtZero: true } },
+    },
+  });
+
+  const gd = data.summary.grade_distribution;
+  new Chart(document.getElementById('grade-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Excellent', 'Good', 'Fair', 'Poor'],
+      datasets: [{
+        data: [gd.Excellent, gd.Good, gd.Fair, gd.Poor],
+        backgroundColor: [COLORS.mint, COLORS.sky, COLORS.amber, COLORS.red],
+        borderColor: '#0f172a',
+        borderWidth: 2,
+      }],
+    },
+    options: { plugins: { legend: { display: true, position: 'bottom' } } },
+  });
+}
+
+// ---------------------------------------------------------------- Tab 6
+function renderScenario(chartId, deltaId, textId, scenario, metrics, deltaLabel) {
+  new Chart(document.getElementById(chartId), {
+    type: 'bar',
+    data: {
+      labels: metrics,
+      datasets: [
+        { label: 'Before', data: metrics.map(m => scenario.before[m]), backgroundColor: COLORS.red, borderRadius: 4 },
+        { label: 'After', data: metrics.map(m => scenario.after[m]), backgroundColor: COLORS.mint, borderRadius: 4 },
+      ],
+    },
+    options: {
+      plugins: { legend: { display: true, position: 'bottom' } },
+      scales: { y: { min: 0, max: 100 } },
+    },
+  });
+
+  const delta = scenario.delta_dohi;
+  const deltaEl = document.getElementById(deltaId);
+  deltaEl.textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + '점';
+  deltaEl.className = 'delta ' + (delta >= 0 ? 'pos' : 'neg');
+  document.getElementById(textId).textContent = `이렇게 바꾸면 DOHI가 ${(delta >= 0 ? '+' : '')}${delta.toFixed(1)}점 변화합니다.`;
+}
+
+function renderTab6(data) {
+  const iv = data.interventions;
+  renderScenario('s1-chart', 's1-delta', 's1-text', iv.S1, ['DRS', 'ARS', 'DOHI']);
+  renderScenario('s2-chart', 's2-delta', 's2-text', iv.S2, ['BES', 'DOHI']);
+  renderScenario('s3-chart', 's3-delta', 's3-text', iv.S3, ['ARS', 'DOHI']);
+}
+
+loadData();
+</script>
+</body>
+</html>
