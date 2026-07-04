@@ -1,0 +1,30 @@
+{
+  "v1_원본 (선형 근사식)": {
+    "auc_drs_vs_progressed": 0.7075,
+    "auc_dohi_vs_progressed": 0.7373,
+    "cohens_d": 1.103,
+    "ks_stat": 0.404,
+    "ks_p": 0.0
+  },
+  "v2_실측 pH<5.5 시간": {
+    "auc_drs_vs_progressed": 0.6335,
+    "auc_dohi_vs_progressed": 0.6461,
+    "cohens_d": 0.551,
+    "ks_stat": 0.208,
+    "ks_p": 0.0491
+  },
+  "v3_실측 AUC(깊이 가중)": {
+    "auc_drs_vs_progressed": 0.6295,
+    "auc_dohi_vs_progressed": 0.6248,
+    "cohens_d": 0.449,
+    "ks_stat": 0.208,
+    "ks_p": 0.0491
+  },
+  "v4_로지스틱회귀 위험도": {
+    "auc_drs_vs_progressed": 0.7294,
+    "auc_dohi_vs_progressed": 0.7402,
+    "cohens_d": 1.0,
+    "ks_stat": 0.376,
+    "ks_p": 0.0
+  }
+}
