@@ -1167,7 +1167,6 @@ function renderZoneSection() {
 }
 
 // ---------------------------------------------------------------- DOHI breakdown
-const RECOVERY_TIME_JS = { high_acid: 40, medium: 25, low: 10 };
 const FOOD_LABEL = { high_acid: '고산성', medium: '중간', low: '저산성' };
 const DRS_NORMALIZATION_MIN = 200; // 5 exposures/day x 40 min worst-case recovery
 const FREQ_FACTOR_BES_JS = { 1: 1.30, 2: 1.00, 3: 0.87 };
@@ -1211,13 +1210,12 @@ function renderDohiBreakdown() {
   const session = DATA.today.sessions[trendsSessionIdx];
   const el = document.getElementById('dohi-breakdown');
 
-  // Daily_DRS depends only on diet timing (food type, delay, sugar
-  // exposure), not on which brushing session is selected, so it's the same
-  // regardless of the session toggle above.
-  const recovery = RECOVERY_TIME_JS[daily.food_type];
-  const demPerExposure = Math.max(0, recovery - daily.brush_delay_min);
-  const totalDemTime = demPerExposure * daily.sugar_freq_day;
-  const drs = Math.min(100, totalDemTime / DRS_NORMALIZATION_MIN * 100);
+  // Daily_DRS is diet-only (simulated from today's actual pH curve, see
+  // generate_data.py's simulate_day_exposure_minutes / ph_timeseries) and
+  // does not depend on brushing at all, so it's identical regardless of
+  // which session is selected above.
+  const exposureMin = daily.dem_exposure_min;
+  const drs = Math.min(100, exposureMin / DRS_NORMALIZATION_MIN * 100);
 
   // Session_ARS/Session_BES use THIS session's own measured pressure/
   // time/coverage, so switching sessions changes the numbers shown below.
@@ -1247,10 +1245,10 @@ function renderDohiBreakdown() {
   el.innerHTML = `
     <div class="formula-note">현재 선택된 <b>${session.time} 세션</b>의 실측값을 대입한 계산입니다 (Session_ARS·Session_BES·DOHI는 세션별로 달라지며, Daily_DRS는 오늘 하루의 식습관 기준으로 공통 적용됩니다).</div>
     <div class="formula-block">
-      <div class="formula-title">1) Daily_DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준</div>
-      <div class="formula-eq">${mv('DET')} = max(0, ${mv('t', 'recovery')} − ${mv('t', 'delay')}) × ${mv('f', 'sugar')}</div>
-      <div class="formula-vals">${mv('t', 'recovery')}(${FOOD_LABEL[daily.food_type]}) ${recovery}분 − 지연 ${daily.brush_delay_min.toFixed(0)}분 = ${demPerExposure.toFixed(1)}분 × ${daily.sugar_freq_day.toFixed(1)}회 = ${totalDemTime.toFixed(1)}</div>
-      <div class="formula-eq">${mv('DRS', 'daily')} = min(100, ${frac(mv('DET'), DRS_NORMALIZATION_MIN)} × 100) = <b>${drs.toFixed(1)}</b></div>
+      <div class="formula-title">1) Daily_DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준 (양치와 무관)</div>
+      <div class="formula-eq">${mv('T', 'exposure')} = 하루 pH 시뮬레이션에서 pH &lt; 5.5인 총 분(分)</div>
+      <div class="formula-vals">식품 유형 ${FOOD_LABEL[daily.food_type]} · 당 노출 ${daily.sugar_freq_day.toFixed(1)}회/일 → ${mv('T', 'exposure')} = ${exposureMin.toFixed(0)}분 (양치 시점과 무관 — 자연 pH 회복 곡선만 반영)</div>
+      <div class="formula-eq">${mv('DRS', 'daily')} = min(100, ${frac(mv('T', 'exposure'), DRS_NORMALIZATION_MIN)} × 100) = <b>${drs.toFixed(1)}</b></div>
     </div>
     <div class="formula-block">
       <div class="formula-title">2) Session_ARS — 마모 위험 (${ars.toFixed(1)}점) · ${session.time} 세션 기준</div>

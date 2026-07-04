@@ -8,8 +8,13 @@ history: MoralGuard needs session-level ARS/BES so the app can show a
 per-brushing-session score, which the original day-averaged OralGuard
 model has no concept of):
 
-  - Daily_DRS: diet/timing only, computed once per day (brushing session
-    choice doesn't change how much sugar you ate or when).
+  - Daily_DRS: diet only, computed once per day by simulating that day's
+    Stephan-curve pH trajectory (sugar_freq_day events of the day's food
+    type) and summing actual minutes below the critical pH 5.5 threshold,
+    normalized against a 200-minute ceiling. Brushing timing does not
+    affect DRS at all — the natural pH recovery runs to completion
+    regardless of when you brush; brush_delay_min's effect on risk lives
+    entirely in Session_ARS's erosion-abrasion penalty below.
   - Session_ARS, Session_BES: computed per individual brushing session
     from that session's own measured pressure/duration/coverage.
   - Daily_ARS / Daily_BES: mean of that day's Session_ARS / Session_BES
@@ -57,6 +62,12 @@ SESSION_FORCE_JITTER_SD = 0.25
 SESSION_TIME_JITTER_SD = 15
 SESSION_COVERAGE_JITTER_SD = 6
 
+PH_BASELINE = 7.0
+CRITICAL_PH = 5.5
+DROP_DURATION_MIN = 5
+TROUGH_BY_TYPE = {"high_acid": 4.0, "medium": 5.3, "low": 6.3}
+WAKING_WINDOW_MIN = 900  # ~15h waking day used for the generic per-day exposure sim
+
 
 def assign_grade_scalar(dohi):
     if dohi >= 90:
@@ -69,14 +80,58 @@ def assign_grade_scalar(dohi):
 
 
 # ---------------------------------------------------------------- scoring
-def daily_drs(food_type, brush_delay_min, sugar_freq_day):
-    """Day-level: total demineralization exposure time, normalized against
-    a worst-case ceiling of 5 sugar exposures/day at the longest (high-acid)
-    40-minute natural recovery time = 200 minutes."""
+def simulate_day_exposure_minutes(food_type, sugar_freq_day, rng=None):
+    """Simulate that day's Stephan-curve pH trajectory (sugar_freq_day
+    eating events of the day's dominant food_type, spread across the waking
+    day) and return the actual total minutes spent below the critical pH
+    5.5 threshold. This is diet/timing only — no brushing interaction is
+    modeled here, matching the "양치와 무관, 순수하게 식이 행동만 반영"
+    (independent of brushing, purely diet) design: the natural Stephan
+    recovery curve runs to completion regardless of when the patient
+    brushes, so brush_delay_min does not enter DRS at all (its effect on
+    the model lives entirely in Session_ARS's erosion-abrasion penalty,
+    which IS specifically about brushing too soon after acid exposure).
+
+    Pass `rng` for a stochastic draw (used for the 180-day history, for
+    realistic day-to-day variation); omit it for a deterministic, evenly-
+    spaced simulation (used for intervention what-if scoring, where we want
+    a reproducible number rather than fresh randomness on every call).
+    """
+    n_events = max(1, int(round(sugar_freq_day)))
+    trough = TROUGH_BY_TYPE[food_type]
     recovery = RECOVERY_TIME[food_type]
-    dem_per_exposure = max(0.0, recovery - brush_delay_min)
-    total_dem_time = dem_per_exposure * sugar_freq_day
-    return min(100.0, total_dem_time / DRS_NORMALIZATION_MIN * 100)
+    tau = recovery / 3
+    interval = WAKING_WINDOW_MIN / n_events
+
+    event_times = []
+    for i in range(n_events):
+        base_t = i * interval
+        if rng is not None:
+            base_t += rng.uniform(-interval * 0.2, interval * 0.2)
+        event_times.append(max(0, base_t))
+
+    n = int(WAKING_WINDOW_MIN)
+    ph = np.full(n, PH_BASELINE)
+    for et in event_times:
+        et_i = int(et)
+        for t in range(et_i, min(n, et_i + DROP_DURATION_MIN + recovery)):
+            local_t = t - et_i
+            if local_t < DROP_DURATION_MIN:
+                frac = local_t / DROP_DURATION_MIN
+                candidate = PH_BASELINE + (trough - PH_BASELINE) * frac
+            else:
+                t_rec = local_t - DROP_DURATION_MIN
+                candidate = trough + (PH_BASELINE - trough) * (1 - np.exp(-t_rec / tau))
+            ph[t] = min(ph[t], candidate)
+
+    return int(np.sum(ph < CRITICAL_PH))
+
+
+def daily_drs_from_minutes(total_dem_minutes):
+    """Normalize total demineralization-exposure minutes against a
+    worst-case ceiling of 5 sugar exposures/day at the longest (high-acid)
+    40-minute natural recovery time = 200 minutes."""
+    return min(100.0, total_dem_minutes / DRS_NORMALIZATION_MIN * 100)
 
 
 def p_risk(force_n):
@@ -197,12 +252,14 @@ def build_daily_series(rng):
     brush_delay_min = ar1_series(rng, N_DAYS, 40, 15, 0.6, 0, 180)
     food_type = rng.choice(FOOD_TYPES, size=N_DAYS, p=FOOD_PROBS)
 
-    # Recent habit improvement narrative: over the last 20 days, delay rises
-    # toward the natural recovery time (which *lowers* DRS — brushing right
-    # after eating is the risky case) and coverage rises, so "today" (day
-    # 180) reads as a solid Good day while the calendar/trajectory history
-    # still shows the earlier rough patch (overpressure bump, variable
-    # DRS/BES) for a realistic story.
+    # Recent habit improvement narrative: over the last 20 days, brush delay
+    # rises (this no longer affects DRS, which is diet-only, but it *does*
+    # lower Session_ARS's erosion-abrasion penalty for high-acid foods),
+    # coverage rises (lowers BES), and sugar_freq_day falls (lowers DRS via
+    # fewer daily demineralization events) — so "today" (day 180) reads as
+    # a solid Good day while the calendar/trajectory history still shows
+    # the earlier rough patch (overpressure bump, variable DRS/BES) for a
+    # realistic story.
     improve_start = N_DAYS - 20
     brush_delay_min = np.clip(
         brush_delay_min + recent_improvement_ramp(N_DAYS, improve_start, 22), 0, 180
@@ -232,19 +289,22 @@ def build_daily_series(rng):
     return df
 
 
-def score_daily_series(df, rng):
-    """Compute Daily_DRS directly, and Daily_ARS/Daily_BES by simulating and
-    averaging that day's individual brushing sessions."""
+def score_daily_series(df, rng_ars_bes, rng_ph):
+    """Compute Daily_DRS by simulating that day's pH exposure curve, and
+    Daily_ARS/Daily_BES by simulating and averaging that day's individual
+    brushing sessions."""
     df = df.copy()
-    df["DRS"] = [
-        daily_drs(row["food_type"], row["brush_delay_min"], row["sugar_freq_day"])
-        for _, row in df.iterrows()
-    ]
+
+    exposure_min = np.zeros(len(df), dtype=int)
+    for i, (_, row) in enumerate(df.iterrows()):
+        exposure_min[i] = simulate_day_exposure_minutes(row["food_type"], row["sugar_freq_day"], rng_ph)
+    df["dem_exposure_min"] = exposure_min
+    df["DRS"] = [daily_drs_from_minutes(m) for m in exposure_min]
 
     daily_ars = np.zeros(len(df))
     daily_bes = np.zeros(len(df))
     for i, (_, row) in enumerate(df.iterrows()):
-        a, b = simulate_daily_ars_bes(rng, row)
+        a, b = simulate_daily_ars_bes(rng_ars_bes, row)
         daily_ars[i] = a
         daily_bes[i] = b
     df["ARS"] = daily_ars
@@ -338,11 +398,6 @@ def build_today_sessions(rng, today_row):
     return sessions
 
 
-PH_BASELINE = 7.0
-DROP_DURATION_MIN = 5
-TROUGH_BY_TYPE = {"high_acid": 4.0, "medium": 5.3, "low": 6.3}
-
-
 def simulate_day_ph(rng):
     n = 1440
     ph = np.full(n, PH_BASELINE)
@@ -395,7 +450,12 @@ def _row_to_features(row):
 
 
 def score_scenario(feat):
-    drs = daily_drs(feat["food_type"], feat["brush_delay_min"], feat["sugar_freq_day"])
+    # Deterministic (rng=None) exposure sim: none of the 3 intervention
+    # levers touch food_type/sugar_freq_day, so before/after DRS is always
+    # identical within a scenario — a fixed, reproducible number here is
+    # more appropriate than fresh stochastic noise on every call.
+    exposure_min = simulate_day_exposure_minutes(feat["food_type"], feat["sugar_freq_day"])
+    drs = daily_drs_from_minutes(exposure_min)
     ars = session_ars(feat["brush_force_N"], feat["brush_time_sec"], feat["food_type"], feat["brush_delay_min"])
     bes = session_bes(feat["brush_time_sec"], feat["buccal_coverage_pct"], feat["occlusal_coverage_pct"],
                        feat["lingual_coverage_pct"], feat["brush_freq"])
@@ -422,35 +482,59 @@ def build_interventions(df):
     3 deltas measured from different starting points.
     """
     recent = df.iloc[-30:]
-    worst_drs_row = recent.loc[recent["DRS"].idxmax()]
     worst_time_row = recent.loc[recent["brush_time_sec"].idxmin()]
     worst_force_row = recent.loc[recent["brush_force_N"].idxmax()]
-    worst_dohi_row = recent.loc[recent["DOHI"].idxmin()]
 
-    def scenario(base_row, overrides):
+    # The combined demo anchors on whichever day is worst specifically on
+    # the two dimensions our 3 levers can actually move (ARS, BES) — not
+    # raw worst-DOHI, since DRS (45% of DOHI) is diet-only now and none of
+    # these interventions touch it, so a DRS-dominated "worst day" would
+    # understate how much these particular fixes are worth.
+    fixable_badness = 0.25 * recent["ARS"] + 0.30 * recent["BES"]
+    worst_fixable_row = recent.loc[fixable_badness.idxmax()]
+
+    # "Wait 30 min before brushing" only ever moves Session_ARS's erosion-
+    # abrasion penalty now (DRS is diet-only and brushing-independent), so
+    # its demo day must actually trigger that penalty: a high-acid day
+    # brushed soon after eating. Fall back to the full 180-day history if
+    # the last 30 days happen to have none.
+    high_acid_recent = recent[recent["food_type"] == "high_acid"]
+    if len(high_acid_recent) > 0:
+        worst_penalty_row = high_acid_recent.loc[high_acid_recent["brush_delay_min"].idxmin()]
+    else:
+        high_acid_all = df[df["food_type"] == "high_acid"]
+        worst_penalty_row = high_acid_all.loc[high_acid_all["brush_delay_min"].idxmin()]
+
+    # Each override is a floor/ceiling ("ensure at least" / "cap at most"),
+    # not a flat replacement — a flat override can *backfire* on a base row
+    # that already satisfies the target (e.g. forcing brush_force_N to a
+    # flat 1.5N on a day whose real force was already 1.2N would raise it).
+    def apply_targets(base_row, targets):
         row = _row_to_features(base_row)
-        row.update(overrides)
+        for field, (direction, value) in targets.items():
+            current = row[field]
+            row[field] = max(current, value) if direction == "at_least" else min(current, value)
         return row
 
     scenario_defs = {
         "wait_30min": {
-            "label": "식후 30분 대기 양치", "base_row": worst_drs_row,
-            "overrides": {"brush_delay_min": 30},
+            "label": "식후 30분 대기 양치", "base_row": worst_penalty_row,
+            "targets": {"brush_delay_min": ("at_least", 30)},
         },
         "brush_2min": {
             "label": "양치 시간 2분 충족", "base_row": worst_time_row,
-            "overrides": {"brush_time_sec": 120},
+            "targets": {"brush_time_sec": ("at_least", 120)},
         },
         "reduce_force": {
             "label": "압력 1.5N으로 감소", "base_row": worst_force_row,
-            "overrides": {"brush_force_N": 1.5},
+            "targets": {"brush_force_N": ("at_most", 1.5)},
         },
     }
 
     results = {}
     for key, s in scenario_defs.items():
-        before = score_scenario(scenario(s["base_row"], {}))
-        after = score_scenario(scenario(s["base_row"], s["overrides"]))
+        before = score_scenario(_row_to_features(s["base_row"]))
+        after = score_scenario(apply_targets(s["base_row"], s["targets"]))
         results[key] = {
             "label": s["label"],
             "affects": ["DRS", "ARS", "BES", "DOHI"],
@@ -460,15 +544,15 @@ def build_interventions(df):
             "delta_dohi": round(after["DOHI"] - before["DOHI"], 2),
         }
 
-    combined_overrides = {}
+    combined_targets = {}
     for s in scenario_defs.values():
-        combined_overrides.update(s["overrides"])
-    before_combined = score_scenario(scenario(worst_dohi_row, {}))
-    after_combined = score_scenario(scenario(worst_dohi_row, combined_overrides))
+        combined_targets.update(s["targets"])
+    before_combined = score_scenario(_row_to_features(worst_fixable_row))
+    after_combined = score_scenario(apply_targets(worst_fixable_row, combined_targets))
     results["combined"] = {
         "label": "습관 3가지 모두 교정",
         "affects": ["DRS", "ARS", "BES", "DOHI"],
-        "reference_date": worst_dohi_row["date"],
+        "reference_date": worst_fixable_row["date"],
         "before": before_combined,
         "after": after_combined,
         "delta_dohi": round(after_combined["DOHI"] - before_combined["DOHI"], 2),
@@ -481,24 +565,33 @@ def main():
     df = build_daily_series(rng)
 
     rng_sessions = np.random.default_rng(SEED + 500)
-    df = score_daily_series(df, rng_sessions)
+    rng_ph_exposure = np.random.default_rng(SEED + 600)
+    df = score_daily_series(df, rng_sessions, rng_ph_exposure)
 
     today_row = df.iloc[-1]
     sessions = build_today_sessions(np.random.default_rng(SEED + 1), today_row)
     ph_data = simulate_day_ph(np.random.default_rng(SEED + 2))
 
-    # Override "today"'s Daily_ARS/BES/DOHI/grade with the average of the
-    # 2 *named* demo sessions actually shown in the Trends tab (rather than
-    # the generic simulated sessions from score_daily_series), so the Home
-    # tab's headline DOHI is always consistent with what a user would get
-    # by averaging the two sessions they can inspect in detail.
+    # Override "today"'s Daily_DRS/ARS/BES/DOHI/grade so the Home tab's
+    # headline number is consistent with what's actually visualized
+    # elsewhere in the app:
+    #  - DRS: real total minutes below critical pH from TODAY's own richly
+    #    simulated 1440-minute curve (ph_data), not the generic per-day sim
+    #    used for the other 179 days — reuses the exact curve the Trends
+    #    tab's pH view already shows.
+    #  - ARS/BES: average of the 2 *named* demo sessions actually shown in
+    #    the Trends tab (rather than the generic simulated sessions from
+    #    score_daily_series).
+    today_exposure_min = int(sum(1 for p in ph_data["ph"] if p < CRITICAL_PH))
+    today_drs = daily_drs_from_minutes(today_exposure_min)
     today_ars = float(np.mean([s["session_ars"] for s in sessions]))
     today_bes = float(np.mean([s["session_bes"] for s in sessions]))
-    today_drs = float(today_row["DRS"])
     today_dohi = compute_dohi(today_drs, today_ars, today_bes)
     today_grade = assign_grade_scalar(today_dohi)
 
     last_idx = df.index[-1]
+    df.loc[last_idx, "dem_exposure_min"] = today_exposure_min
+    df.loc[last_idx, "DRS"] = today_drs
     df.loc[last_idx, "ARS"] = today_ars
     df.loc[last_idx, "BES"] = today_bes
     df.loc[last_idx, "DOHI"] = today_dohi
@@ -508,7 +601,7 @@ def main():
     interventions = build_interventions(df)
 
     daily_series = df[[
-        "day", "date", "DRS", "ARS", "BES", "DOHI", "grade",
+        "day", "date", "DRS", "ARS", "BES", "DOHI", "grade", "dem_exposure_min",
         "brush_time_sec", "brush_force_N", "brush_freq",
         "buccal_coverage_pct", "occlusal_coverage_pct", "lingual_coverage_pct",
         "sugar_freq_day", "food_type", "brush_delay_min",
