@@ -677,7 +677,7 @@ function renderTab3(data) {
 // ---------------------------------------------------------------- Tab 4
 function renderTab4(data) {
   const personas = data.personas;
-  const accentOrder = [COLORS.sky, COLORS.mint, COLORS.red];
+  const accentOrder = [COLORS.sky, COLORS.mint, COLORS.red, COLORS.amber];
   const days = personas[0].trajectory.map((_, i) => i);
 
   new Chart(document.getElementById('trajectory-chart'), {

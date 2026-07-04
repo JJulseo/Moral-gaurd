@@ -21,7 +21,7 @@ from scoring import compute_ars, compute_bes, compute_drs, compute_dohi
 FIG_DIR = "figures"
 DATA_DIR = "data"
 
-ACCENTS = {"sky": "#38bdf8", "mint": "#34d399", "red": "#f87171"}
+ACCENTS = {"sky": "#38bdf8", "mint": "#34d399", "red": "#f87171", "amber": "#fbbf24"}
 
 
 def load_scored():
@@ -142,15 +142,21 @@ def _name_persona(z_drs, z_ars, z_bes_inv, used_names):
     return name
 
 
-def analyze_personas(df, seed=42):
+def analyze_personas(df, seed=42, n_clusters=4):
     # Rank-based (percentile) features for clustering only, not for scoring.
     # DRS/ARS/BES formulas/distributions are untouched; this only prevents a
     # single extreme outlier (e.g. a near-constant-zero ARS with one large
     # value) from dominating standardized-distance clustering and forming a
     # degenerate n=1 cluster.
+    #
+    # n_clusters=4 (not 3): at k=3 every cluster ends up dominated by one of
+    # DRS/ARS/BES, so there is no low-risk-on-all-axes "균형형" persona to
+    # contrast against — k=4 surfaces one (confirmed via silhouette score,
+    # which is also slightly higher at k=4 than k=3), giving the comparison
+    # a genuine good-outcome example alongside the three risk personas.
     x_scaled = df[["DRS", "ARS", "BES"]].rank(pct=True).to_numpy()
 
-    km = KMeans(n_clusters=3, random_state=seed, n_init=10)
+    km = KMeans(n_clusters=n_clusters, random_state=seed, n_init=10)
     cluster_labels = km.fit_predict(x_scaled)
 
     pop_mean = df[["DRS", "ARS", "BES"]].mean()
@@ -158,7 +164,7 @@ def analyze_personas(df, seed=42):
 
     used_names = {}
     personas = []
-    for c in range(3):
+    for c in range(n_clusters):
         mask = cluster_labels == c
         cluster_mean = df.loc[mask, ["DRS", "ARS", "BES"]].mean()
 
@@ -181,8 +187,8 @@ def analyze_personas(df, seed=42):
         })
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
-    colors_list = [ACCENTS["sky"], ACCENTS["mint"], ACCENTS["red"]]
-    for c in range(3):
+    colors_list = [ACCENTS["sky"], ACCENTS["mint"], ACCENTS["red"], ACCENTS["amber"]]
+    for c in range(n_clusters):
         mask = cluster_labels == c
         axes[0].scatter(df.loc[mask, "DRS"], df.loc[mask, "ARS"],
                          s=df.loc[mask, "BES"], alpha=0.6, color=colors_list[c],
@@ -342,7 +348,7 @@ def build_persona_trajectories(df, personas, cluster_labels, km, x_scaled, days=
         persona["trajectory"] = trajectory.round(2).tolist()
 
     fig, ax = plt.subplots(figsize=(9, 4.5))
-    colors_list = [ACCENTS["sky"], ACCENTS["mint"], ACCENTS["red"]]
+    colors_list = [ACCENTS["sky"], ACCENTS["mint"], ACCENTS["red"], ACCENTS["amber"]]
     for persona, color in zip(personas, colors_list):
         ax.plot(range(days), persona["trajectory"], label=persona["name"], color=color)
     ax.set_xlabel("Day")
