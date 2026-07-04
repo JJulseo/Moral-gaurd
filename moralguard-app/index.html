@@ -299,17 +299,20 @@
   }
 
   .formula-block {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
+    background: var(--app-bg);
+    border-radius: 14px;
+    border-left: 4px solid var(--border);
+    padding: 14px 14px 14px 12px;
+    margin-bottom: 12px;
   }
-  .formula-block.last { border-bottom: none; padding-bottom: 0; }
-  .formula-block:first-child { padding-top: 0; }
-  .formula-title { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+  .formula-block.last { margin-bottom: 0; }
+  .formula-title { font-size: 13px; font-weight: 800; margin-bottom: 8px; }
   .formula-eq {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 14.5px; color: var(--text); line-height: 1.5;
-    background: var(--app-bg); border-radius: 8px; padding: 10px 10px; margin-bottom: 4px;
+    background: var(--card-bg); border-radius: 8px; padding: 10px 10px; margin-bottom: 4px;
     display: flex; align-items: center; flex-wrap: wrap; gap: 3px;
+    box-shadow: var(--shadow);
   }
   .formula-vals { font-size: 11px; color: var(--text-dim); line-height: 1.6; padding: 0 2px; }
   .mv { font-style: italic; }
@@ -1244,26 +1247,26 @@ function renderDohiBreakdown() {
 
   el.innerHTML = `
     <div class="formula-note">현재 선택된 <b>${session.time} 세션</b>의 실측값을 대입한 계산입니다 (Session_ARS·Session_BES·DOHI는 세션별로 달라지며, Daily_DRS는 오늘 하루의 식습관 기준으로 공통 적용됩니다).</div>
-    <div class="formula-block">
-      <div class="formula-title">1) Daily_DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준 (양치와 무관)</div>
-      <div class="formula-eq">${mv('T', 'exposure')} = 하루 pH 시뮬레이션에서 pH &lt; 5.5인 총 분(分)</div>
-      <div class="formula-vals">식품 유형 ${FOOD_LABEL[daily.food_type]} · 당 노출 ${daily.sugar_freq_day.toFixed(1)}회/일 → ${mv('T', 'exposure')} = ${exposureMin.toFixed(0)}분 (양치 시점과 무관 — 자연 pH 회복 곡선만 반영)</div>
+    <div class="formula-block" style="border-left-color:${COLORS.amber}">
+      <div class="formula-title">1) Daily_DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준</div>
+      <div class="formula-eq">${mv('T', 'exposure')} = 하루 중 pH &lt; 5.5인 총 분(分)</div>
+      <div class="formula-vals">식품 유형 ${FOOD_LABEL[daily.food_type]} · 당 노출 ${daily.sugar_freq_day.toFixed(1)}회/일 → ${mv('T', 'exposure')} = ${exposureMin.toFixed(0)}분</div>
       <div class="formula-eq">${mv('DRS', 'daily')} = min(100, ${frac(mv('T', 'exposure'), DRS_NORMALIZATION_MIN)} × 100) = <b>${drs.toFixed(1)}</b></div>
     </div>
-    <div class="formula-block">
+    <div class="formula-block" style="border-left-color:${COLORS.red}">
       <div class="formula-title">2) Session_ARS — 마모 위험 (${ars.toFixed(1)}점) · ${session.time} 세션 기준</div>
       <div class="formula-eq">${mv('P', 'risk')}(${mv('F')}) = ${mv('F')} ≤ 3.0N: ${frac(mv('F'), '3.0')}×25 · 3.0~3.9N: 25+${frac(mv('F')+'−3.0', '0.9')}×45 · &gt;3.9N: 70+(${mv('F')}−3.9)×15</div>
       <div class="formula-vals">${mv('P', 'risk')}(${sessionForce.toFixed(2)}N) = ${pRisk.toFixed(1)}</div>
       <div class="formula-eq">${mv('ARS', 'session')} = min(100, ${mv('P', 'risk')} × ${frac(mv('t', 'brush'), '120')} × ${mv('k', 'erosion')})</div>
       <div class="formula-vals">${mv('t', 'brush')} = ${sessionTime.toFixed(0)}s → 시간계수 ${timeFactor.toFixed(2)}${isHighAcidEarly ? ` · 조기양치 페널티 ${mv('k', 'erosion')} = ${penalty.toFixed(2)}` : ` · ${mv('k', 'erosion')} = 1.00 (해당 없음)`} → <b>${ars.toFixed(1)}</b></div>
     </div>
-    <div class="formula-block">
+    <div class="formula-block" style="border-left-color:#a855f7">
       <div class="formula-title">3) Session_BES — 양치 비효율 (${bes.toFixed(1)}점) · ${session.time} 세션 기준</div>
       <div class="formula-eq">${mv('T', 'ineff')} = 100 − plaque_removed(${mv('t', 'brush')}) &nbsp; ${mv('C', 'ineff')} = 100 − 가중커버리지</div>
       <div class="formula-vals">${mv('T', 'ineff')}(${sessionTime.toFixed(0)}s) = ${tIneff.toFixed(1)} · ${mv('C', 'ineff')}(협${buccalPct.toFixed(0)}%/교${occlusalPct.toFixed(0)}%/설${lingualPct.toFixed(0)}%) = ${cIneff.toFixed(1)} · ${mv('k', 'freq')}(${daily.brush_freq}회/일) = ${freqFactor}</div>
       <div class="formula-eq">${mv('BES', 'session')} = min(100, ${mv('k', 'freq')} × (0.4×${mv('T', 'ineff')} + 0.6×${mv('C', 'ineff')})) = <b>${bes.toFixed(1)}</b></div>
     </div>
-    <div class="formula-block last">
+    <div class="formula-block last" style="border-left-color:${COLORS.mintDeep}">
       <div class="formula-title">4) DOHI — 종합 지수 (${dohi.toFixed(1)}점)</div>
       <div class="formula-eq">${mv('DOHI')} = 100 − (0.45×${mv('DRS', 'daily')} + 0.25×${mv('ARS', 'daily')} + 0.30×${mv('BES', 'daily')})</div>
       <div class="formula-vals">100 − (0.45×${drs.toFixed(1)} + 0.25×${ars.toFixed(1)} + 0.30×${bes.toFixed(1)}) = <b>${dohi.toFixed(1)}</b> (Daily_ARS·Daily_BES는 하루 전체 세션 평균 — 이 화면은 ${session.time} 세션 1개만 대입한 값)</div>
