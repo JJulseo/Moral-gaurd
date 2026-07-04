@@ -1,24 +1,43 @@
 """Generate 180-day daily data and one detailed "today" day (multi-session
 1-second pressure timeseries + 1440-minute pH timeseries) for a single
-MoralGuard patient ("민재"). Reuses the DRS/ARS/BES/DOHI scoring formulas
-from the OralGuard pipeline (../scripts/scoring.py) so both apps share the
-same methodology. Writes moralguard-app/data/patient_data.json.
+MoralGuard patient ("민재").
+
+Scoring methodology (session-first, distinct from the OralGuard cohort
+pipeline's day-only formulas — see the design discussion in the session
+history: MoralGuard needs session-level ARS/BES so the app can show a
+per-brushing-session score, which the original day-averaged OralGuard
+model has no concept of):
+
+  - Daily_DRS: diet/timing only, computed once per day (brushing session
+    choice doesn't change how much sugar you ate or when).
+  - Session_ARS, Session_BES: computed per individual brushing session
+    from that session's own measured pressure/duration/coverage.
+  - Daily_ARS / Daily_BES: mean of that day's Session_ARS / Session_BES
+    values (a day with brush_freq=2 has 2 sessions averaged, etc).
+  - DOHI = 100 - (0.45*Daily_DRS + 0.25*Daily_ARS + 0.30*Daily_BES),
+    clipped to [0, 100]. Note BES is now a badness/inefficiency score
+    (higher = worse), unlike the OralGuard cohort model where BES was an
+    efficiency score (higher = better) — this makes all three
+    sub-scores uniformly "higher = worse", which is why DOHI no longer
+    needs the (100 - BES) inversion the OralGuard formula used.
+
+References: Stephan & Miller (1943) / Dimensions of Dental Hygiene (2024)
+for demineralization exposure timing; Wiegand (2013), Hamza (2023), Senna
+(2008) for the pressure risk curve; Attin et al., Caries Res (2001) for
+the erosion-abrasion synergy penalty; Creeth et al., J Dent Hyg (2009)
+for the time-vs-plaque-removal curve; Wang et al., Biosensors (2025) and
+Parkinson et al. (2022) for the 18-zone coverage weights; Brusius et al.,
+Braz Oral Res (2023) for the brushing-frequency risk factor; Bratthall &
+Petersson, Community Dent Oral Epidemiol (2005) and Featherstone, Oral
+Health Prev Dent (2004) for the weighted-sum composite index design.
+
+Writes moralguard-app/data/patient_data.json.
 """
 import json
-import sys
 from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-
-sys.path.insert(0, "../scripts")
-from scoring import (  # noqa: E402
-    RECOVERY_TIME,
-    compute_ars,
-    compute_bes,
-    compute_drs,
-    compute_dohi,
-)
 
 SEED = 7
 N_DAYS = 180
@@ -26,6 +45,17 @@ TODAY = datetime(2026, 7, 3)
 
 FOOD_TYPES = ["high_acid", "medium", "low"]
 FOOD_PROBS = [0.30, 0.50, 0.20]
+
+RECOVERY_TIME = {"high_acid": 40, "medium": 25, "low": 10}  # minutes
+DRS_NORMALIZATION_MIN = 200  # 5 exposures/day x 40 min (worst-case recovery) cap
+TIME_POINTS = [0, 30, 45, 60, 120, 180, 240]
+PLAQUE_POINTS = [0, 12, 16, 20, 41, 50, 100]
+COVERAGE_WEIGHTS = {"buccal": (8, 1.0), "occlusal": (4, 1.2), "lingual": (6, 1.5)}
+FREQ_FACTOR_BES = {1: 1.30, 2: 1.00, 3: 0.87}
+
+SESSION_FORCE_JITTER_SD = 0.25
+SESSION_TIME_JITTER_SD = 15
+SESSION_COVERAGE_JITTER_SD = 6
 
 
 def assign_grade_scalar(dohi):
@@ -38,6 +68,86 @@ def assign_grade_scalar(dohi):
     return "Poor"
 
 
+# ---------------------------------------------------------------- scoring
+def daily_drs(food_type, brush_delay_min, sugar_freq_day):
+    """Day-level: total demineralization exposure time, normalized against
+    a worst-case ceiling of 5 sugar exposures/day at the longest (high-acid)
+    40-minute natural recovery time = 200 minutes."""
+    recovery = RECOVERY_TIME[food_type]
+    dem_per_exposure = max(0.0, recovery - brush_delay_min)
+    total_dem_time = dem_per_exposure * sugar_freq_day
+    return min(100.0, total_dem_time / DRS_NORMALIZATION_MIN * 100)
+
+
+def p_risk(force_n):
+    """Piecewise pressure-risk curve: near-flat below 3.0N (clinically
+    non-significant abrasion), steepening 3.0-3.9N, capped past that."""
+    if force_n <= 3.0:
+        return (force_n / 3.0) * 25
+    if force_n <= 3.9:
+        return 25 + (force_n - 3.0) / 0.9 * 45
+    return min(100.0, 70 + (force_n - 3.9) * 15)
+
+
+def session_ars(force_n, duration_sec, food_type, brush_delay_min):
+    """Session-level abrasion risk: pressure risk, scaled by brush duration,
+    with an erosion-abrasion synergy penalty when brushing too soon after
+    an acidic food (Attin et al. 2001)."""
+    time_factor = duration_sec / 120
+    if food_type == "high_acid" and brush_delay_min < 30:
+        penalty = 1.0 + 1.5 * (1 - brush_delay_min / 30)
+    else:
+        penalty = 1.0
+    return min(100.0, p_risk(force_n) * time_factor * penalty)
+
+
+def t_inefficiency(duration_sec):
+    removed_pct = float(np.interp(duration_sec, TIME_POINTS, PLAQUE_POINTS))
+    return 100.0 - removed_pct
+
+
+def c_inefficiency(buccal_pct, occlusal_pct, lingual_pct):
+    (bn, bw), (on, ow), (ln, lw) = COVERAGE_WEIGHTS["buccal"], COVERAGE_WEIGHTS["occlusal"], COVERAGE_WEIGHTS["lingual"]
+    total_weight = bn * bw + on * ow + ln * lw
+    weighted_coverage = (buccal_pct * bn * bw + occlusal_pct * on * ow + lingual_pct * ln * lw) / total_weight
+    return 100.0 - weighted_coverage
+
+
+def session_bes(duration_sec, buccal_pct, occlusal_pct, lingual_pct, daily_brush_freq):
+    """Session-level brushing-quality badness: residual plaque + coverage
+    shortfall, scaled by how many times per day the patient brushes at all
+    (Brusius et al. 2023 frequency risk factor)."""
+    freq_factor = FREQ_FACTOR_BES[min(int(daily_brush_freq), 3)]
+    ti = t_inefficiency(duration_sec)
+    ci = c_inefficiency(buccal_pct, occlusal_pct, lingual_pct)
+    return min(100.0, freq_factor * (0.4 * ti + 0.6 * ci))
+
+
+def compute_dohi(drs, ars, bes):
+    dohi = 100 - (0.45 * drs + 0.25 * ars + 0.30 * bes)
+    return max(0.0, min(100.0, dohi))
+
+
+def simulate_daily_ars_bes(rng, day_row):
+    """Simulate that day's individual brushing sessions (one per brush_freq)
+    by jittering session-level force/duration/coverage around the day's
+    behavioral mean, then average their Session_ARS/Session_BES into the
+    day's aggregate — this is what makes Daily_ARS/BES a genuine average of
+    real per-session values rather than a single day-level formula."""
+    n_sessions = int(day_row["brush_freq"])
+    ars_vals, bes_vals = [], []
+    for _ in range(n_sessions):
+        force = float(np.clip(rng.normal(day_row["brush_force_N"], SESSION_FORCE_JITTER_SD), 0.1, 5.0))
+        duration = float(np.clip(rng.normal(day_row["brush_time_sec"], SESSION_TIME_JITTER_SD), 20, 240))
+        buccal = float(np.clip(rng.normal(day_row["buccal_coverage_pct"], SESSION_COVERAGE_JITTER_SD), 0, 100))
+        occlusal = float(np.clip(rng.normal(day_row["occlusal_coverage_pct"], SESSION_COVERAGE_JITTER_SD), 0, 100))
+        lingual = float(np.clip(rng.normal(day_row["lingual_coverage_pct"], SESSION_COVERAGE_JITTER_SD), 0, 100))
+        ars_vals.append(session_ars(force, duration, day_row["food_type"], day_row["brush_delay_min"]))
+        bes_vals.append(session_bes(duration, buccal, occlusal, lingual, n_sessions))
+    return float(np.mean(ars_vals)), float(np.mean(bes_vals))
+
+
+# ---------------------------------------------------------------- generation
 def ar1_series(rng, n, mu, sigma, phi, lo, hi, mid_bump=None):
     """Bounded AR(1) process around a mean, optionally with a temporary
     mid-series excursion (mid_bump = (start_day, end_day, extra_mean))."""
@@ -71,6 +181,8 @@ def recent_improvement_ramp(n, start_day, shift):
 
 
 def build_daily_series(rng):
+    """Generate each day's behavioral MEANS (not scores yet) — these are the
+    center each day's individual brushing sessions jitter around."""
     brush_time_sec = ar1_series(rng, N_DAYS, 100, 20, 0.7, 30, 240)
     # Overpressure phase within the last 30 days (peaks ~day 161), recovered
     # by "today" (day 180) so the intervention baseline picker (worst day in
@@ -85,13 +197,12 @@ def build_daily_series(rng):
     brush_delay_min = ar1_series(rng, N_DAYS, 40, 15, 0.6, 0, 180)
     food_type = rng.choice(FOOD_TYPES, size=N_DAYS, p=FOOD_PROBS)
 
-    # Recent habit improvement narrative: over the last 20 days, delay drops
-    # and coverage rises, so "today" (day 180) reads as a solid Good day
-    # while the calendar/trajectory history still shows the earlier rough
-    # patch (overpressure bump, variable DRS/BES) for a realistic story.
-    # Note: DRS falls as brush_delay_min *rises* toward recovery_time (waiting
-    # for the acid to naturally neutralize before brushing lowers demineralization
-    # exposure — see compute_drs), so the improvement here increases delay.
+    # Recent habit improvement narrative: over the last 20 days, delay rises
+    # toward the natural recovery time (which *lowers* DRS — brushing right
+    # after eating is the risky case) and coverage rises, so "today" (day
+    # 180) reads as a solid Good day while the calendar/trajectory history
+    # still shows the earlier rough patch (overpressure bump, variable
+    # DRS/BES) for a realistic story.
     improve_start = N_DAYS - 20
     brush_delay_min = np.clip(
         brush_delay_min + recent_improvement_ramp(N_DAYS, improve_start, 22), 0, 180
@@ -115,15 +226,32 @@ def build_daily_series(rng):
         "brush_delay_min": brush_delay_min,
     })
 
-    df["DRS"] = compute_drs(df)
-    df["ARS"] = compute_ars(df)
-    df["BES"] = compute_bes(df)
-    df["DOHI"] = compute_dohi(df["DRS"], df["ARS"], df["BES"])
-    df["grade"] = df["DOHI"].apply(assign_grade_scalar)
-
     dates = [(TODAY - timedelta(days=N_DAYS - 1 - i)).strftime("%Y-%m-%d") for i in range(N_DAYS)]
     df["day"] = np.arange(1, N_DAYS + 1)
     df["date"] = dates
+    return df
+
+
+def score_daily_series(df, rng):
+    """Compute Daily_DRS directly, and Daily_ARS/Daily_BES by simulating and
+    averaging that day's individual brushing sessions."""
+    df = df.copy()
+    df["DRS"] = [
+        daily_drs(row["food_type"], row["brush_delay_min"], row["sugar_freq_day"])
+        for _, row in df.iterrows()
+    ]
+
+    daily_ars = np.zeros(len(df))
+    daily_bes = np.zeros(len(df))
+    for i, (_, row) in enumerate(df.iterrows()):
+        a, b = simulate_daily_ars_bes(rng, row)
+        daily_ars[i] = a
+        daily_bes[i] = b
+    df["ARS"] = daily_ars
+    df["BES"] = daily_bes
+
+    df["DOHI"] = [compute_dohi(d, a, b) for d, a, b in zip(df["DRS"], df["ARS"], df["BES"])]
+    df["grade"] = df["DOHI"].apply(assign_grade_scalar)
     return df
 
 
@@ -157,7 +285,16 @@ def build_zone_coverage(rng, buccal_agg, occlusal_agg, lingual_agg):
     }
 
 
+def avg_arr(arr):
+    return sum(arr) / len(arr)
+
+
 def build_today_sessions(rng, today_row):
+    """Two named demo sessions for "today" with full 1-second pressure
+    timeseries + jittered 18-zone coverage (used for the Trends tab's
+    detailed per-session views). Each session's own Session_ARS/Session_BES
+    is attached so the frontend and this script compute identical numbers
+    from the same measured values."""
     sessions = []
     session_defs = [
         {"time": "07:12", "overpressure": False},
@@ -177,20 +314,26 @@ def build_today_sessions(rng, today_row):
             today_row["occlusal_coverage_pct"],
             today_row["lingual_coverage_pct"],
         )
-        overall_cov = (
-            sum(zone_cov["buccal"]) + sum(zone_cov["occlusal"]) + sum(zone_cov["lingual"])
-        ) / 18
+        avg_force = float(np.mean(force))
+        buccal_pct = avg_arr(zone_cov["buccal"])
+        occlusal_pct = avg_arr(zone_cov["occlusal"])
+        lingual_pct = avg_arr(zone_cov["lingual"])
+        s_ars = session_ars(avg_force, duration, today_row["food_type"], today_row["brush_delay_min"])
+        s_bes = session_bes(duration, buccal_pct, occlusal_pct, lingual_pct, len(session_defs))
+        overall_cov = (sum(zone_cov["buccal"]) + sum(zone_cov["occlusal"]) + sum(zone_cov["lingual"])) / 18
         sessions.append({
             "session_id": i,
             "time": sdef["time"],
             "duration_sec": duration,
-            "avg_force_N": round(float(np.mean(force)), 2),
+            "avg_force_N": round(avg_force, 2),
             "max_force_N": round(float(max_force), 2),
             "min_force_N": round(float(min_force), 2),
             "overpressure_sec": overpressure_sec,
             "pressure_timeseries": {"t": t, "force": force},
             "zone_coverage": zone_cov,
             "overall_coverage_pct": round(overall_cov, 1),
+            "session_ars": round(s_ars, 2),
+            "session_bes": round(s_bes, 2),
         })
     return sessions
 
@@ -251,17 +394,26 @@ def _row_to_features(row):
     }
 
 
+def score_scenario(feat):
+    drs = daily_drs(feat["food_type"], feat["brush_delay_min"], feat["sugar_freq_day"])
+    ars = session_ars(feat["brush_force_N"], feat["brush_time_sec"], feat["food_type"], feat["brush_delay_min"])
+    bes = session_bes(feat["brush_time_sec"], feat["buccal_coverage_pct"], feat["occlusal_coverage_pct"],
+                       feat["lingual_coverage_pct"], feat["brush_freq"])
+    dohi = compute_dohi(drs, ars, bes)
+    return {"DRS": round(drs, 2), "ARS": round(ars, 2), "BES": round(bes, 2), "DOHI": round(dohi, 2)}
+
+
 def build_interventions(df):
     """Each of the 3 demo scenarios is anchored on its OWN worst real day in
     the last 30 days for the specific lever being tested (e.g. "reduce
-    force" is measured against the day force actually spiked) — using one
-    shared baseline instead breaks down because ARS depends on BOTH
-    brush_time_sec AND brush_force_N jointly: forcing the "brush 2 minutes"
-    scenario to inherit an unrelated bad-pressure baseline makes longer
-    brushing look harmful (ARS rises with brush_time_sec), which is a real
-    formula interaction but a misleading demo. Each scenario's `before` is
-    tagged with its reference date so the UI can show why the baselines
-    differ instead of presenting it as unexplained inconsistency.
+    force" is measured against the day force actually spiked) — a single
+    shared baseline breaks down because Session_ARS depends on BOTH
+    brush_time_sec AND brush_force_N jointly (and Session_BES also depends
+    on brush_time_sec), so forcing every scenario onto one baseline lets an
+    unrelated bad value contaminate a scenario that isn't about it. Every
+    scenario reports all of DRS/ARS/BES/DOHI (not just its "primary" score)
+    since the formulas are interconnected enough that a lever can move more
+    than one sub-score.
 
     The combined "fix everything" projection (used for the single
     motivational delta) is evaluated separately on ONE real day — the worst
@@ -275,17 +427,6 @@ def build_interventions(df):
     worst_force_row = recent.loc[recent["brush_force_N"].idxmax()]
     worst_dohi_row = recent.loc[recent["DOHI"].idxmin()]
 
-    def score(row_dict):
-        row_df = pd.DataFrame([row_dict])
-        drs = compute_drs(row_df).iloc[0]
-        ars = compute_ars(row_df).iloc[0]
-        bes = compute_bes(row_df).iloc[0]
-        dohi = compute_dohi(pd.Series([drs]), pd.Series([ars]), pd.Series([bes])).iloc[0]
-        return {
-            "DRS": round(float(drs), 2), "ARS": round(float(ars), 2),
-            "BES": round(float(bes), 2), "DOHI": round(float(dohi), 2),
-        }
-
     def scenario(base_row, overrides):
         row = _row_to_features(base_row)
         row.update(overrides)
@@ -294,25 +435,25 @@ def build_interventions(df):
     scenario_defs = {
         "wait_30min": {
             "label": "식후 30분 대기 양치", "base_row": worst_drs_row,
-            "overrides": {"brush_delay_min": 30}, "affects": ["DRS", "DOHI"],
+            "overrides": {"brush_delay_min": 30},
         },
         "brush_2min": {
             "label": "양치 시간 2분 충족", "base_row": worst_time_row,
-            "overrides": {"brush_time_sec": 120}, "affects": ["BES", "DOHI"],
+            "overrides": {"brush_time_sec": 120},
         },
         "reduce_force": {
             "label": "압력 1.5N으로 감소", "base_row": worst_force_row,
-            "overrides": {"brush_force_N": 1.5}, "affects": ["ARS", "DOHI"],
+            "overrides": {"brush_force_N": 1.5},
         },
     }
 
     results = {}
     for key, s in scenario_defs.items():
-        before = score(scenario(s["base_row"], {}))
-        after = score(scenario(s["base_row"], s["overrides"]))
+        before = score_scenario(scenario(s["base_row"], {}))
+        after = score_scenario(scenario(s["base_row"], s["overrides"]))
         results[key] = {
             "label": s["label"],
-            "affects": s["affects"],
+            "affects": ["DRS", "ARS", "BES", "DOHI"],
             "reference_date": s["base_row"]["date"],
             "before": before,
             "after": after,
@@ -322,8 +463,8 @@ def build_interventions(df):
     combined_overrides = {}
     for s in scenario_defs.values():
         combined_overrides.update(s["overrides"])
-    before_combined = score(scenario(worst_dohi_row, {}))
-    after_combined = score(scenario(worst_dohi_row, combined_overrides))
+    before_combined = score_scenario(scenario(worst_dohi_row, {}))
+    after_combined = score_scenario(scenario(worst_dohi_row, combined_overrides))
     results["combined"] = {
         "label": "습관 3가지 모두 교정",
         "affects": ["DRS", "ARS", "BES", "DOHI"],
@@ -339,9 +480,31 @@ def main():
     rng = np.random.default_rng(SEED)
     df = build_daily_series(rng)
 
+    rng_sessions = np.random.default_rng(SEED + 500)
+    df = score_daily_series(df, rng_sessions)
+
     today_row = df.iloc[-1]
     sessions = build_today_sessions(np.random.default_rng(SEED + 1), today_row)
     ph_data = simulate_day_ph(np.random.default_rng(SEED + 2))
+
+    # Override "today"'s Daily_ARS/BES/DOHI/grade with the average of the
+    # 2 *named* demo sessions actually shown in the Trends tab (rather than
+    # the generic simulated sessions from score_daily_series), so the Home
+    # tab's headline DOHI is always consistent with what a user would get
+    # by averaging the two sessions they can inspect in detail.
+    today_ars = float(np.mean([s["session_ars"] for s in sessions]))
+    today_bes = float(np.mean([s["session_bes"] for s in sessions]))
+    today_drs = float(today_row["DRS"])
+    today_dohi = compute_dohi(today_drs, today_ars, today_bes)
+    today_grade = assign_grade_scalar(today_dohi)
+
+    last_idx = df.index[-1]
+    df.loc[last_idx, "ARS"] = today_ars
+    df.loc[last_idx, "BES"] = today_bes
+    df.loc[last_idx, "DOHI"] = today_dohi
+    df.loc[last_idx, "grade"] = today_grade
+    today_row = df.iloc[-1]
+
     interventions = build_interventions(df)
 
     daily_series = df[[
@@ -356,11 +519,11 @@ def main():
         "daily_series": daily_series,
         "today": {
             "date": TODAY.strftime("%Y-%m-%d"),
-            "DRS": round(float(today_row["DRS"]), 2),
-            "ARS": round(float(today_row["ARS"]), 2),
-            "BES": round(float(today_row["BES"]), 2),
-            "DOHI": round(float(today_row["DOHI"]), 2),
-            "grade": today_row["grade"],
+            "DRS": round(today_drs, 2),
+            "ARS": round(today_ars, 2),
+            "BES": round(today_bes, 2),
+            "DOHI": round(today_dohi, 2),
+            "grade": today_grade,
             "sessions": sessions,
             "ph_timeseries": ph_data,
         },
@@ -375,13 +538,16 @@ def main():
         assert len(s["pressure_timeseries"]["force"]) == s["duration_sec"]
         assert min(s["pressure_timeseries"]["force"]) >= 0
     assert all(0 <= r["DOHI"] <= 100 for r in daily_series)
+    assert all(0 <= r["ARS"] <= 100 for r in daily_series)
+    assert all(0 <= r["BES"] <= 100 for r in daily_series)
 
     out_path = "data/patient_data.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
     print(f"Wrote {out_path}")
-    print("Today:", result["today"]["DOHI"], result["today"]["grade"])
-    print("Sessions:", [(s["time"], s["avg_force_N"], s["max_force_N"], s["overpressure_sec"]) for s in sessions])
+    print("Today:", result["today"]["DOHI"], result["today"]["grade"],
+          "(DRS", result["today"]["DRS"], "ARS", result["today"]["ARS"], "BES", result["today"]["BES"], ")")
+    print("Sessions:", [(s["time"], s["avg_force_N"], s["max_force_N"], s["overpressure_sec"], s["session_ars"], s["session_bes"]) for s in sessions])
     print("Interventions:", {k: v["delta_dohi"] for k, v in interventions.items()})
 
 
