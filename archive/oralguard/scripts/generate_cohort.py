@@ -4,8 +4,13 @@ Each row represents one person's 180-day average values (not daily rows).
 Distributions are based on published dental/hygiene literature; see the
 project design spec for citations per variable.
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = REPO_ROOT / "data"
 
 SEED = 42
 N = 300
@@ -142,7 +147,7 @@ def main():
     print("\ncohort_raw.csv summary:")
     print(df.describe(include="all"))
 
-    out_path = "data/cohort_raw.csv"
+    out_path = DATA_DIR / "cohort_raw.csv"
     df.to_csv(out_path, index=False)
     print(f"\nWrote {len(df)} rows to {out_path}")
 

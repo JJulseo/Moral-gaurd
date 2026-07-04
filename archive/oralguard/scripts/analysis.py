@@ -4,6 +4,7 @@ heatmap, k-means personas, ROC-AUC, intervention simulations, and
 data/cohort_results.json (the data contract consumed by index.html).
 """
 import json
+from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
@@ -18,14 +19,16 @@ from sklearn.metrics import roc_auc_score, roc_curve
 
 from scoring import compute_ars, compute_bes, compute_drs, compute_dohi
 
-FIG_DIR = "figures"
-DATA_DIR = "data"
+ARCHIVE_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
+FIG_DIR = ARCHIVE_DIR / "figures"
+DATA_DIR = REPO_ROOT / "data"
 
 ACCENTS = {"sky": "#38bdf8", "mint": "#34d399", "red": "#f87171", "amber": "#fbbf24"}
 
 
 def load_scored():
-    return pd.read_csv(f"{DATA_DIR}/cohort_scored.csv")
+    return pd.read_csv(DATA_DIR / "cohort_scored.csv")
 
 
 # ---------------------------------------------------------------- (1)

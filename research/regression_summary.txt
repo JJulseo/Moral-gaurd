@@ -3,8 +3,6 @@
 Dep. Variable:                   DOHI   R-squared:                       0.369
 Model:                            OLS   Adj. R-squared:                  0.347
 Method:                 Least Squares   F-statistic:                     16.90
-Date:                Sat, 04 Jul 2026   Prob (F-statistic):           4.88e-24
-Time:                        13:16:57   Log-Likelihood:                -884.90
 No. Observations:                 300   AIC:                             1792.
 Df Residuals:                     289   BIC:                             1833.
 Df Model:                          10                                         

@@ -14,8 +14,13 @@ session-first model (see that file for the full citation list):
     formula. BES is a badness/inefficiency score (higher = worse), same
     direction as DRS/ARS, so DOHI needs no (100-BES) inversion.
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = REPO_ROOT / "data"
 
 PROGRESSION_SEED = 142  # distinct from generation seed (42) to avoid stream overlap
 DRS_SIM_SEED = 642      # pH-exposure simulation rng, distinct stream
@@ -262,7 +267,7 @@ def validate_scored(df):
 
 
 def main():
-    df = pd.read_csv("data/cohort_raw.csv")
+    df = pd.read_csv(DATA_DIR / "cohort_raw.csv")
     scored = score_cohort(df)
     validate_scored(scored)
 
@@ -274,7 +279,7 @@ def main():
     print()
     print("Progression rate:", scored["progressed"].mean())
 
-    out_path = "data/cohort_scored.csv"
+    out_path = DATA_DIR / "cohort_scored.csv"
     scored.to_csv(out_path, index=False)
     print(f"\nWrote {len(scored)} rows to {out_path}")
 

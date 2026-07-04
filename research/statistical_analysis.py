@@ -197,7 +197,15 @@ def section_group_comparison(df):
         log("  (없음)")
     for var in sig.index:
         log(f"  {var:28s} coef={model.params[var]:+.3f}  p={model.pvalues[var]:.4f}")
-    (BASE_DIR / "regression_summary.txt").write_text(model.summary().as_text(), encoding="utf-8")
+    # Strip the Date/Time header lines statsmodels embeds by default — they
+    # change on every run and would otherwise make this file look
+    # "changed" on every reproduction even though the statistics are
+    # identical.
+    summary_text = "\n".join(
+        line for line in model.summary().as_text().splitlines()
+        if not line.startswith(("Date:", "Time:"))
+    )
+    (BASE_DIR / "regression_summary.txt").write_text(summary_text, encoding="utf-8")
     log("(전체 회귀 결과표는 research/regression_summary.txt에 저장됨)")
 
     coefs = model.params.drop("Intercept", errors="ignore").sort_values()

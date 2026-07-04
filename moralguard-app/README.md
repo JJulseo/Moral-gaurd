@@ -1,16 +1,17 @@
 # MoralGuard (모바일 앱 프로토타입)
 
 '민재'라는 특정 환자 한 명의 180일 구강 건강 데이터와, 스마트폰 프레임 안에서
-동작하는 인터랙티브 모바일 앱 UI(Home / Trends / Calendar / Comparison 4탭)를
-제공하는 프로토타입입니다. Comparison 탭의 코호트 비교/페르소나 궤적은 상위
-OralGuard 프로젝트의 `../data/cohort_results.json`을 그대로 재사용합니다
-(동일한 DRS/ARS/BES/DOHI 스코어링 방법론 공유).
+동작하는 인터랙티브 모바일 앱 UI(Home / Insights / Calendar / Compare 4탭)를
+제공하는 프로토타입입니다. Compare 탭의 코호트 비교/페르소나 궤적은
+`../data/cohort_results.json`(300인 합성 코호트 분석 결과)을 그대로 재사용합니다
+(동일한 DRS/ARS/BES/DOHI 스코어링 방법론 공유 — `archive/oralguard/`에 보관된
+코호트 생성/채점/분석 파이프라인 산출물).
 
 ## 데이터 재생성
 
 ```bash
 cd moralguard-app
-source ../.venv/bin/activate   # 상위 OralGuard venv 재사용 (pandas/numpy 등)
+source ../.venv/bin/activate   # 저장소 루트 venv 재사용 (pandas/numpy 등)
 python3 generate_data.py       # -> data/patient_data.json
 ```
 
