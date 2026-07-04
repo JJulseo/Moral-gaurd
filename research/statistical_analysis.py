@@ -28,8 +28,21 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
-plt.rcParams["font.family"] = "NanumGothic"
+
+# NanumGothic is only guaranteed to exist on machines that installed it
+# (e.g. via `apt install fonts-nanum`); pick whichever Korean-capable font
+# is actually available so this doesn't silently render tofu boxes on a
+# grader's Windows (Malgun Gothic) or Mac (Apple SD Gothic Neo) machine.
+_KOREAN_FONT_CANDIDATES = ["NanumGothic", "Malgun Gothic", "Apple SD Gothic Neo", "AppleGothic", "NanumBarunGothic"]
+_installed_fonts = {f.name for f in fm.fontManager.ttflist}
+_korean_font = next((f for f in _KOREAN_FONT_CANDIDATES if f in _installed_fonts), None)
+if _korean_font:
+    plt.rcParams["font.family"] = _korean_font
+else:
+    print("[warning] 한글 폰트를 찾지 못했습니다 — 그래프의 한글 라벨이 깨져 보일 수 있습니다 "
+          "(나눔고딕 설치 권장).")
 plt.rcParams["axes.unicode_minus"] = False
 import numpy as np
 import pandas as pd
