@@ -217,7 +217,7 @@
         </div>
         <div class="gauge-wrap">
           <canvas id="gauge-bes"></canvas>
-          <div class="gauge-label">BES (양치 효율)</div>
+          <div class="gauge-label">BES (양치 비효율)</div>
           <div class="gauge-feedback" id="fb-bes"></div>
         </div>
       </div>
@@ -393,16 +393,10 @@ function makeGauge(canvasId, value, maxValue, fillColor, displayText) {
 }
 
 function riskColor(value, thresholds = [30, 60]) {
-  // higher = worse (DRS, ARS)
+  // higher = worse (DRS, ARS, BES)
   if (value < thresholds[0]) return COLORS.mint;
   if (value < thresholds[1]) return COLORS.amber;
   return COLORS.red;
-}
-function goodColor(value, thresholds = [40, 70]) {
-  // higher = better (BES)
-  if (value < thresholds[0]) return COLORS.red;
-  if (value < thresholds[1]) return COLORS.amber;
-  return COLORS.mint;
 }
 
 // ---------------------------------------------------------------- data load
@@ -445,9 +439,9 @@ const FEEDBACK = {
     [101, '과도한 압력으로 마모 위험이 높습니다. 압력을 크게 낮추세요.'],
   ],
   bes: [
-    [40, '양치 효율이 낮습니다. 시간과 커버리지를 함께 늘려보세요.'],
-    [70, '양치 효율이 보통입니다. 사각지대를 조금 더 신경써보세요.'],
-    [101, '양치 효율이 우수합니다. 훌륭한 습관이에요!'],
+    [30, '양치 효율이 우수합니다. 훌륭한 습관이에요!'],
+    [60, '양치 효율이 보통입니다. 사각지대를 조금 더 신경써보세요.'],
+    [101, '양치 효율이 낮습니다. 시간과 커버리지를 함께 늘려보세요.'],
   ],
 };
 function feedbackFor(key, value) {
@@ -467,7 +461,7 @@ function renderTab1(data) {
 
   makeGauge('gauge-drs', p.DRS, 100, riskColor(p.DRS));
   makeGauge('gauge-ars', p.ARS, 100, riskColor(p.ARS));
-  makeGauge('gauge-bes', p.BES, 100, goodColor(p.BES));
+  makeGauge('gauge-bes', p.BES, 100, riskColor(p.BES));
 
   document.getElementById('fb-drs').textContent = feedbackFor('drs', p.DRS);
   document.getElementById('fb-ars').textContent = feedbackFor('ars', p.ARS);

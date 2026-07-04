@@ -1,33 +1,33 @@
                             OLS Regression Results                            
 ==============================================================================
-Dep. Variable:                   DOHI   R-squared:                       0.483
-Model:                            OLS   Adj. R-squared:                  0.465
-Method:                 Least Squares   F-statistic:                     27.00
-Date:                Sat, 04 Jul 2026   Prob (F-statistic):           4.31e-36
-Time:                        13:00:11   Log-Likelihood:                -1090.9
-No. Observations:                 300   AIC:                             2204.
-Df Residuals:                     289   BIC:                             2244.
+Dep. Variable:                   DOHI   R-squared:                       0.369
+Model:                            OLS   Adj. R-squared:                  0.347
+Method:                 Least Squares   F-statistic:                     16.90
+Date:                Sat, 04 Jul 2026   Prob (F-statistic):           4.88e-24
+Time:                        13:16:57   Log-Likelihood:                -884.90
+No. Observations:                 300   AIC:                             1792.
+Df Residuals:                     289   BIC:                             1833.
 Df Model:                          10                                         
 Covariance Type:            nonrobust                                         
 =========================================================================================
                             coef    std err          t      P>|t|      [0.025      0.975]
 -----------------------------------------------------------------------------------------
-Intercept                47.4280      5.111      9.280      0.000      37.369      57.487
-C(brush_freq)[T.2]        3.3027      1.360      2.429      0.016       0.627       5.979
-C(brush_freq)[T.3]        5.8341      1.771      3.294      0.001       2.348       9.320
-age                       0.1157      0.048      2.398      0.017       0.021       0.211
-sugar_freq_day           -1.3182      0.389     -3.387      0.001      -2.084      -0.552
-brush_time_sec            0.0446      0.017      2.698      0.007       0.012       0.077
-brush_force_N             0.5098      1.100      0.464      0.643      -1.655       2.674
-brush_delay_min           0.2681      0.019     13.962      0.000       0.230       0.306
-buccal_coverage_pct       0.0251      0.039      0.642      0.521      -0.052       0.102
-occlusal_coverage_pct     0.0375      0.026      1.448      0.149      -0.013       0.088
-lingual_coverage_pct      0.1544      0.027      5.724      0.000       0.101       0.208
+Intercept                73.9977      2.572     28.769      0.000      68.935      79.060
+C(brush_freq)[T.2]        4.7894      0.684      6.999      0.000       3.443       6.136
+C(brush_freq)[T.3]        7.1310      0.891      8.000      0.000       5.377       8.885
+age                      -0.0219      0.024     -0.903      0.367      -0.070       0.026
+sugar_freq_day           -1.0701      0.196     -5.464      0.000      -1.456      -0.685
+brush_time_sec            0.0056      0.008      0.669      0.504      -0.011       0.022
+brush_force_N            -2.3056      0.553     -4.166      0.000      -3.395      -1.216
+brush_delay_min          -0.0049      0.010     -0.508      0.612      -0.024       0.014
+buccal_coverage_pct       0.0462      0.020      2.348      0.020       0.007       0.085
+occlusal_coverage_pct     0.0116      0.013      0.891      0.374      -0.014       0.037
+lingual_coverage_pct      0.0616      0.014      4.532      0.000       0.035       0.088
 ==============================================================================
-Omnibus:                       31.002   Durbin-Watson:                   2.144
-Prob(Omnibus):                  0.000   Jarque-Bera (JB):               37.408
-Skew:                          -0.823   Prob(JB):                     7.53e-09
-Kurtosis:                       3.530   Cond. No.                     1.49e+03
+Omnibus:                       35.574   Durbin-Watson:                   2.043
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):               45.974
+Skew:                          -0.959   Prob(JB):                     1.04e-10
+Kurtosis:                       3.026   Cond. No.                     1.49e+03
 ==============================================================================
 
 Notes:

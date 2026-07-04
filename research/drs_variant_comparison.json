@@ -1,30 +1,30 @@
 {
   "v1_원본 (선형 근사식)": {
-    "auc_drs_vs_progressed": 0.7075,
-    "auc_dohi_vs_progressed": 0.7373,
-    "cohens_d": 1.103,
-    "ks_stat": 0.404,
-    "ks_p": 0.0
+    "auc_drs_vs_progressed": 0.5917,
+    "auc_dohi_vs_progressed": 0.6676,
+    "cohens_d": 0.342,
+    "ks_stat": 0.179,
+    "ks_p": 0.1985
   },
   "v2_실측 pH<5.5 시간": {
-    "auc_drs_vs_progressed": 0.6335,
-    "auc_dohi_vs_progressed": 0.6461,
-    "cohens_d": 0.551,
-    "ks_stat": 0.208,
-    "ks_p": 0.0491
+    "auc_drs_vs_progressed": 0.6392,
+    "auc_dohi_vs_progressed": 0.7207,
+    "cohens_d": 0.733,
+    "ks_stat": 0.272,
+    "ks_p": 0.0102
   },
   "v3_실측 AUC(깊이 가중)": {
-    "auc_drs_vs_progressed": 0.6295,
-    "auc_dohi_vs_progressed": 0.6248,
-    "cohens_d": 0.449,
-    "ks_stat": 0.208,
-    "ks_p": 0.0491
+    "auc_drs_vs_progressed": 0.6375,
+    "auc_dohi_vs_progressed": 0.6923,
+    "cohens_d": 0.669,
+    "ks_stat": 0.272,
+    "ks_p": 0.0102
   },
   "v4_로지스틱회귀 위험도": {
-    "auc_drs_vs_progressed": 0.7294,
-    "auc_dohi_vs_progressed": 0.7402,
-    "cohens_d": 1.0,
-    "ks_stat": 0.376,
-    "ks_p": 0.0
+    "auc_drs_vs_progressed": 0.6972,
+    "auc_dohi_vs_progressed": 0.746,
+    "cohens_d": 0.788,
+    "ks_stat": 0.328,
+    "ks_p": 0.0009
   }
 }

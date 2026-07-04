@@ -164,7 +164,9 @@ def analyze_personas(df, seed=42):
 
         z_drs = (cluster_mean["DRS"] - pop_mean["DRS"]) / pop_std["DRS"]
         z_ars = (cluster_mean["ARS"] - pop_mean["ARS"]) / pop_std["ARS"]
-        z_bes_inv = (pop_mean["BES"] - cluster_mean["BES"]) / pop_std["BES"]
+        # BES is a badness scale (higher = worse), same direction as DRS/ARS,
+        # so "저위생형" (poor-hygiene persona) is now high-BES, not low-BES.
+        z_bes_inv = (cluster_mean["BES"] - pop_mean["BES"]) / pop_std["BES"]
 
         name = _name_persona(z_drs, z_ars, z_bes_inv, used_names)
 
@@ -207,13 +209,13 @@ def analyze_roc(df):
     y_true = df["progressed"].astype(int)
 
     drs_auc = roc_auc_score(y_true, df["DRS"])
-    bes_auc = roc_auc_score(y_true, 100 - df["BES"])
+    bes_auc = roc_auc_score(y_true, df["BES"])
     dohi_auc = roc_auc_score(y_true, 100 - df["DOHI"])
 
     fig, ax = plt.subplots(figsize=(5.5, 5))
     for label, score, color in [
         ("DRS", df["DRS"], ACCENTS["red"]),
-        ("100-BES", 100 - df["BES"], "#fbbf24"),
+        ("BES", df["BES"], "#fbbf24"),
         ("100-DOHI", 100 - df["DOHI"], ACCENTS["sky"]),
     ]:
         fpr, tpr, _ = roc_curve(y_true, score)

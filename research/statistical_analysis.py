@@ -260,6 +260,19 @@ def simulate_person_day(food_type, sugar_freq_day, rng=None):
     return minutes_below, auc_below
 
 
+def analytic_drs_v1(df):
+    """The original (pre-simulation) analytic DRS formula: demineralization
+    exposure approximated as (recovery_time - brush_delay_min) x sugar_freq,
+    normalized against a 120-unit cap. Kept here as a standalone reference
+    baseline since the cohort pipeline's DRS column is now itself the
+    simulated pH-exposure value (see scoring.py), so it can no longer serve
+    as the "v1 original formula" comparator."""
+    recovery_time = df["food_type"].map(RECOVERY_TIME)
+    dem_per_exposure = (recovery_time - df["brush_delay_min"]).clip(lower=0)
+    det = dem_per_exposure * df["sugar_freq_day"]
+    return (det / 120 * 100).clip(upper=100).to_numpy()
+
+
 def cohens_d(x, y):
     nx, ny = len(x), len(y)
     pooled_std = np.sqrt(((nx - 1) * x.std(ddof=1) ** 2 + (ny - 1) * y.std(ddof=1) ** 2) / (nx + ny - 2))
@@ -287,7 +300,7 @@ def section_drs_variants(df):
     # 200-minute cap), computed directly rather than hand-derived.
     worst_minutes, worst_auc = simulate_person_day("high_acid", 5, rng=None)
 
-    drs_v1 = df["DRS"].to_numpy()  # cohort's original analytic formula
+    drs_v1 = analytic_drs_v1(df)  # original pre-simulation analytic formula
     drs_v2 = np.minimum(100, df["dem_minutes"] / 200 * 100)  # diet-only, minutes below 5.5
     drs_v3 = np.minimum(100, df["dem_auc"] / worst_auc * 100)  # diet-only, depth-weighted AUC
 
@@ -316,8 +329,8 @@ def section_drs_variants(df):
 
     for (name, drs_arr), color in zip(variants.items(), colors):
         ars = df["ARS"].to_numpy()
-        bes = df["BES"].to_numpy()
-        dohi_variant = np.clip(100 - (0.45 * drs_arr + 0.25 * ars + 0.30 * (100 - bes)), 0, 100)
+        bes = df["BES"].to_numpy()  # badness scale (higher = worse), no inversion needed
+        dohi_variant = np.clip(100 - (0.45 * drs_arr + 0.25 * ars + 0.30 * bes), 0, 100)
 
         auc_drs = roc_auc_score(y, drs_arr)
         auc_dohi = roc_auc_score(y, 100 - dohi_variant)
@@ -367,18 +380,19 @@ def section_drs_variants(df):
     log(f"  (worst-case 정규화 기준: 5회 고산성 노출/일 → {worst_minutes}분, AUC {worst_auc:.1f} pH·분)")
 
     log("\n### 해석상 주의할 점 (순환성)")
-    log("'progressed'는 원래 baseline_icdas + Bernoulli(진행확률)로 생성되었고, 그 진행확률은")
-    log("grade(=v1 DRS로 계산된 원본 DOHI에서 파생)에 의해 결정되었다. 즉 v1이 만들어낸")
-    log("등급이 그대로 'progressed'를 낳았으므로, v1이 다른 공식보다 AUC가 높게 나오는 것은")
-    log("v1이 '실제로 더 우수한 모델'이어서가 아니라 정답지(y)를 v1 자신이 정의했기 때문일")
-    log("가능성이 크다 (순환 검증). v2/v3처럼 v1과 무관하게 새로 시뮬레이션한 값이 그럼에도")
-    log("불구하고 어느 정도 분리력(AUC 0.63, Cohen's d 0.45~0.55)을 보인다는 점은 오히려")
-    log("고무적 — 진짜 독립적인 신호가 존재한다는 뜻이다. 이 비교를 '어느 공식이 옳은가'가")
-    log("아니라 '공식 선택이 결과에 얼마나 민감한가'를 보여주는 민감도 분석으로 보고서에")
-    log("쓰는 것을 추천한다. 아울러 v2/v3의 값 분포(위 mean/std/min/max)가 v1보다 훨씬")
-    log("좁아 0-100 스케일을 다 쓰지 못하는데, 이는 200분/AUC 상한 정규화 기준이 새 공식의")
-    log("실제 달성 가능 범위에 맞춰 재보정되지 않았기 때문일 수 있다 — AUC 차이의 일부는")
-    log("이 스케일 압축 효과일 수 있음.")
+    log("코호트 파이프라인이 session-first 알고리즘(scripts/scoring.py)으로 바뀌면서")
+    log("cohort_scored.csv의 실제 DRS는 이제 v1(옛 선형 근사식)이 아니라 v2와 동일한 방식")
+    log("(Stephan 곡선 시뮬레이션 후 pH<5.5 시간 정규화)으로 계산된다. 즉 'progressed'를")
+    log("낳은 grade/DOHI는 v2 계열 DRS에서 파생된 것이므로, 순환성 우려가 있다면 이제는")
+    log("v1이 아니라 v2 쪽에 있다 (다만 v2는 서로 다른 rng 시드로 독립 재시뮬레이션한 값이라")
+    log("완전히 동일하지는 않음 — 약한 잔여 순환성). 반대로 v1(옛 analytic 공식)은 이제 코호트")
+    log("생성 과정과 무관한 진짜 외부 비교군이 되었고, AUC가 v2/v3/v4보다 낮게 나온 것은")
+    log("자연스러운 결과다. 가장 중요한 주의점은 v4(로지스틱 회귀)로, 이는 'progressed'를")
+    log("예측하도록 같은 300명 데이터에 직접 학습(fit)한 뒤 같은 데이터로 평가한 것이라")
+    log("(train/test 분리 없음) AUC가 가장 높게 나오는 것이 당연하다 — '데이터 기반 공식이")
+    log("이론적으로 우월하다'는 근거로 쓰기보다는, in-sample 적합의 상한선 정도로 해석해야")
+    log("한다. 이 비교는 '어느 공식이 옳은가'가 아니라 '공식 선택이 결과에 얼마나 민감한가'를")
+    log("보여주는 민감도 분석으로 보고서에 쓰는 것을 추천한다.")
 
     return results
 
