@@ -47,7 +47,6 @@
     background: #000;
     border-radius: 62px;
     padding: 14px;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15);
     flex: 0 0 auto;
   }
   .phone-screen {
@@ -327,6 +326,18 @@
     margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border);
     font-size: 10.5px; color: var(--text-dim); line-height: 1.6;
   }
+  .formula-citation-title { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .citation-list { margin: 0; padding-left: 16px; }
+  .citation-list li { margin-bottom: 4px; }
+  .cite-ref {
+    font-size: 9px; font-weight: 700; color: var(--mint-deep);
+    vertical-align: super; margin-left: 2px;
+  }
+  .formula-summary {
+    font-size: 11.5px; color: var(--text-dim); line-height: 1.6;
+    background: var(--app-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+  }
+  .formula-summary b { color: var(--text); }
   .formula-note {
     font-size: 11.5px; color: var(--mint-deep); background: var(--mint-pale);
     border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; line-height: 1.5;
@@ -1240,33 +1251,48 @@ function renderDohiBreakdown() {
   const dohi = Math.max(0, Math.min(100, 100 - (0.45 * drs + 0.25 * ars + 0.30 * bes)));
 
   el.innerHTML = `
+    <div class="formula-summary">
+      <b>DOHI</b>는 서로 독립적인 임상 근거를 가진 세 하위 지표 — 탈회 위험(DRS), 마모 위험(ARS), 양치 비효율(BES) — 를
+      <b>0.45 : 0.25 : 0.30</b> 가중치로 합산한 복합 지수입니다. 각 하위 지표의 산출식과 가중치는 아래 인용 문헌에 근거하며,
+      실제로 임상 결과(치아우식 진행 여부)를 유의미하게 예측하는지는 300인 합성 코호트 통계 분석으로 별도 검증했습니다
+      (보고서 2장 참고).
+    </div>
     <div class="formula-note">현재 선택된 <b>${session.time} 세션</b>의 실측값을 대입한 계산입니다 (Session_ARS·Session_BES·DOHI는 세션별로 달라지며, Daily_DRS는 오늘 하루의 식습관 기준으로 공통 적용됩니다).</div>
     <div class="formula-block" style="border-left-color:${COLORS.amber}">
-      <div class="formula-title">1) Daily_DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준</div>
+      <div class="formula-title">1) Daily_DRS — 탈회 위험 (${drs.toFixed(1)}점) · 오늘의 식습관 기준<span class="cite-ref">[1]</span></div>
       <div class="formula-eq">${mv('T', 'exposure')} = 하루 중 pH &lt; 5.5인 총 분(分)</div>
       <div class="formula-vals">식품 유형 ${FOOD_LABEL[daily.food_type]} · 당 노출 ${daily.sugar_freq_day.toFixed(1)}회/일 → ${mv('T', 'exposure')} = ${exposureMin.toFixed(0)}분</div>
       <div class="formula-eq">${mv('DRS', 'daily')} = min(100, ${frac(mv('T', 'exposure'), DRS_NORMALIZATION_MIN)} × 100) = <b>${drs.toFixed(1)}</b></div>
     </div>
     <div class="formula-block" style="border-left-color:${COLORS.red}">
-      <div class="formula-title">2) Session_ARS — 마모 위험 (${ars.toFixed(1)}점) · ${session.time} 세션 기준</div>
+      <div class="formula-title">2) Session_ARS — 마모 위험 (${ars.toFixed(1)}점) · ${session.time} 세션 기준<span class="cite-ref">[2, 3]</span></div>
       <div class="formula-eq">${mv('P', 'risk')}(${mv('F')}) = ${mv('F')} ≤ 3.0N: ${frac(mv('F'), '3.0')}×25 · 3.0~3.9N: 25+${frac(mv('F')+'−3.0', '0.9')}×45 · &gt;3.9N: 70+(${mv('F')}−3.9)×15</div>
       <div class="formula-vals">${mv('P', 'risk')}(${sessionForce.toFixed(2)}N) = ${pRisk.toFixed(1)}</div>
       <div class="formula-eq">${mv('ARS', 'session')} = min(100, ${mv('P', 'risk')} × ${frac(mv('t', 'brush'), '120')} × ${mv('k', 'erosion')})</div>
       <div class="formula-vals">${mv('t', 'brush')} = ${sessionTime.toFixed(0)}s → 시간계수 ${timeFactor.toFixed(2)}${isHighAcidEarly ? ` · 조기양치 페널티 ${mv('k', 'erosion')} = ${penalty.toFixed(2)}` : ` · ${mv('k', 'erosion')} = 1.00 (해당 없음)`} → <b>${ars.toFixed(1)}</b></div>
     </div>
     <div class="formula-block" style="border-left-color:#a855f7">
-      <div class="formula-title">3) Session_BES — 양치 비효율 (${bes.toFixed(1)}점) · ${session.time} 세션 기준</div>
+      <div class="formula-title">3) Session_BES — 양치 비효율 (${bes.toFixed(1)}점) · ${session.time} 세션 기준<span class="cite-ref">[4, 5, 6]</span></div>
       <div class="formula-eq">${mv('T', 'ineff')} = 100 − plaque_removed(${mv('t', 'brush')}) &nbsp; ${mv('C', 'ineff')} = 100 − 가중커버리지</div>
       <div class="formula-vals">${mv('T', 'ineff')}(${sessionTime.toFixed(0)}s) = ${tIneff.toFixed(1)} · ${mv('C', 'ineff')}(협${buccalPct.toFixed(0)}%/교${occlusalPct.toFixed(0)}%/설${lingualPct.toFixed(0)}%) = ${cIneff.toFixed(1)} · ${mv('k', 'freq')}(${daily.brush_freq}회/일) = ${freqFactor}</div>
       <div class="formula-eq">${mv('BES', 'session')} = min(100, ${mv('k', 'freq')} × (0.4×${mv('T', 'ineff')} + 0.6×${mv('C', 'ineff')})) = <b>${bes.toFixed(1)}</b></div>
     </div>
     <div class="formula-block last" style="border-left-color:${COLORS.mintDeep}">
-      <div class="formula-title">4) DOHI — 종합 지수 (${dohi.toFixed(1)}점)</div>
+      <div class="formula-title">4) DOHI — 종합 지수 (${dohi.toFixed(1)}점)<span class="cite-ref">[7]</span></div>
       <div class="formula-eq">${mv('DOHI')} = 100 − (0.45×${mv('DRS', 'daily')} + 0.25×${mv('ARS', 'daily')} + 0.30×${mv('BES', 'daily')})</div>
       <div class="formula-vals">100 − (0.45×${drs.toFixed(1)} + 0.25×${ars.toFixed(1)} + 0.30×${bes.toFixed(1)}) = <b>${dohi.toFixed(1)}</b> (Daily_ARS·Daily_BES는 하루 전체 세션 평균 — 이 화면은 ${session.time} 세션 1개만 대입한 값)</div>
     </div>
     <div class="formula-citation">
-      참고문헌: Stephan &amp; Miller (1943), <i>Dimensions of Dental Hygiene</i> (2024) 탈회 노출 시간 · Wiegand (2013), Senna (2008) 압력-마모 위험도 · Attin et al., <i>Caries Res</i> (2001) 산-마모 상승작용 · Creeth et al., <i>J Dent Hyg</i> (2009) 양치시간-플라크 제거율 · Brusius et al., <i>Braz Oral Res</i> (2023) 빈도 위험계수 · Bratthall &amp; Petersson (2005), Featherstone, <i>Oral Health Prev Dent</i> (2004) 종합 위험도 가중합
+      <div class="formula-citation-title">참고문헌</div>
+      <ol class="citation-list">
+        <li>Stephan &amp; Miller (1943); <i>Dimensions of Dental Hygiene</i> (2024) — 식후 탈회 노출 시간(스테판 곡선)</li>
+        <li>Wiegand et al. (2013); Hamza et al. (2023) — 브러싱 압력별 마모 위험 곡선</li>
+        <li>Senna et al. (2008) — 압력·시간 복합 마모 위험 모델</li>
+        <li>Attin et al., <i>Caries Res</i> (2001) — 산 노출 직후 양치의 산-마모 상승작용</li>
+        <li>Creeth et al., <i>J Dent Hyg</i> (2009) — 양치 시간 대비 플라크 제거율 곡선</li>
+        <li>Wang et al., <i>Biosensors</i> (2025); Parkinson et al. (2022) — 18구역 커버리지 가중치, Brusius et al., <i>Braz Oral Res</i> (2023) — 양치 빈도 위험계수</li>
+        <li>Bratthall &amp; Petersson, <i>Community Dent Oral Epidemiol</i> (2005); Featherstone, <i>Oral Health Prev Dent</i> (2004) — 가중합 복합지수 설계</li>
+      </ol>
     </div>
   `;
 }
