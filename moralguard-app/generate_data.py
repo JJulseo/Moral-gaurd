@@ -476,10 +476,11 @@ def build_interventions(df):
     than one sub-score.
 
     The combined "fix everything" projection (used for the single
-    motivational delta) is evaluated separately on ONE real day — the worst
-    DOHI day in the last 30 — with all 3 fixes applied together, so it's an
-    internally consistent single calculation rather than an invalid sum of
-    3 deltas measured from different starting points.
+    motivational delta) is evaluated separately on ONE real day — whichever
+    day is worst specifically on the two levers these fixes can move
+    (see worst_fixable_row below) — with all 3 fixes applied together, so
+    it's an internally consistent single calculation rather than an invalid
+    sum of 3 deltas measured from different starting points.
     """
     recent = df.iloc[-30:]
     worst_time_row = recent.loc[recent["brush_time_sec"].idxmin()]
@@ -596,7 +597,6 @@ def main():
     df.loc[last_idx, "BES"] = today_bes
     df.loc[last_idx, "DOHI"] = today_dohi
     df.loc[last_idx, "grade"] = today_grade
-    today_row = df.iloc[-1]
 
     interventions = build_interventions(df)
 

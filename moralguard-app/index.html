@@ -205,9 +205,8 @@
     width: 34px; height: 34px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-size: 16px;
-    background: #eff6ff;
+    background: var(--mint-pale);
   }
-  .stat-pill .icon-badge.mint { background: var(--mint-pale); }
   .stat-pill .s-label { font-size: 11px; color: var(--text-dim); font-weight: 600; }
   .stat-pill .s-value { font-size: 15px; font-weight: 800; }
 
@@ -363,7 +362,6 @@
   .cal-metric-grid { display: flex; gap: 8px; margin-top: 10px; }
 
   /* ---------------- comparison tab ---------------- */
-  .legend-row { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--text-dim); margin-top: 8px; }
   .percentile-readout {
     margin-top: 10px; font-size: 13px; line-height: 1.5; text-align: center;
     background: var(--app-bg); border-radius: 12px; padding: 10px;
@@ -460,13 +458,13 @@
 
         <div class="stat-pair">
           <div class="stat-pill">
-            <div class="icon-badge mint">
+            <div class="icon-badge">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-2.5 0-4.5 2-4.5 4.5 0 1.2.4 2 1 3 .8 1.2 1.5 2.3 1.5 4.5a4 4 0 0 0 8 0c0-1 .3-1.7.7-2.3"/><path d="M13 8.5A4.5 4.5 0 0 1 17.5 4c1.5 0 2.5.8 2.5 2s-1 2-2.5 2c-1 0-1.5.5-1.5 1.5"/></svg>
             </div>
             <div><div class="s-label">오늘 세션</div><div class="s-value" id="stat-sessions">-</div></div>
           </div>
           <div class="stat-pill">
-            <div class="icon-badge mint">
+            <div class="icon-badge">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
             </div>
             <div><div class="s-label">모니터링</div><div class="s-value" id="stat-monitoring">-</div></div>
@@ -575,7 +573,6 @@ function renderComparison() {
     <div class="card" style="margin-top:6px;">
       <h2>1. 180일 궤적 비교</h2>
       <canvas id="traj-compare-chart" height="220"></canvas>
-      <div class="legend-row" id="traj-legend"></div>
     </div>
 
     <div class="card">
@@ -974,9 +971,6 @@ function renderPressureSection() {
   const t = session.pressure_timeseries.t;
   const force = session.pressure_timeseries.force;
 
-  // point-level coloring: red where force > 3.0N (danger breach)
-  const pointColors = force.map(f => f > 3.0 ? COLORS.red : COLORS.blue);
-
   if (pressureChart) pressureChart.destroy();
   pressureChart = new Chart(document.getElementById('pressure-chart'), {
     type: 'line',
@@ -1290,10 +1284,6 @@ function coverageToColor(pct) {
   return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 }
 
-function chipFor(status) {
-  // status: 'good' | 'warn' | 'bad'
-  return { good: 'mint', warn: 'amber', bad: 'red' }[status];
-}
 function setChip(status, text) {
   const chip = document.getElementById('detail-chip');
   chip.textContent = text;
